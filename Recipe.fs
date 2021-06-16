@@ -70,7 +70,8 @@ type Fakabase () =
 
 
 let fakabase = Fakabase()
-let koktPotet = (createRecipe 
+let koktPotet = 
+        (createRecipe 
            "Kokt potet"
             Dinner
             20.
@@ -82,7 +83,8 @@ let koktPotet = (createRecipe
             4
             [])
 fakabase.AddRecipe koktPotet
-fakabase.AddRecipe (createRecipe
+fakabase.AddRecipe 
+        (createRecipe
             "Koteletter med kokt potet"
             Dinner
             5.

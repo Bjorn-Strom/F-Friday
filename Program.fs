@@ -10,7 +10,7 @@ open Giraffe
 open HttpHandlers
 
 let routes =
-    choose [ GET    >=> route  "/recipes"    >=> getRecipes ()
+    choose [ GET    >=> route  "/recipes"    >=> getRecipes 
              POST   >=> route  "/recipe"     >=> postRecipe
              PUT    >=> route  "/recipe"     >=> putRecipe
              DELETE >=> routef "/recipe/%O" deleteRecipe

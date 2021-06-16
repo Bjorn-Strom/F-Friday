@@ -5,12 +5,12 @@ open Microsoft.AspNetCore.Http
 open FSharp.Control.Tasks
 
 let getRecipes (next: HttpFunc) (context: HttpContext) =
-    json Recipe.getAllRecipes next context
+    json (Recipe.getAllRecipes ()) next context
 let postRecipe (next: HttpFunc) (context: HttpContext) =
     task {
         let! newRecipe = context.BindJsonAsync<Recipe.Recipe>()
         Recipe.addRecipe newRecipe
-        return! (getRecipes ())  next context
+        return! getRecipes next context
     }
 let putRecipe (next: HttpFunc) (context: HttpContext) =
     task {
