@@ -1,37 +1,49 @@
-module Server
+type Measurement = 
+    | Kg of float
+    | G of float
+    | Mg of float
+    | L of float
+    | Dl of float
+    | Ml of float
+    | Ms of float
+    | Ss of float
+    | Ts of float
+    | Stk of float
 
-open System
-open Microsoft.AspNetCore.Builder
-open Microsoft.AspNetCore.Hosting
-open Microsoft.Extensions.Hosting
-open Microsoft.Extensions.DependencyInjection
-open Giraffe
+type Ingredient =
+    { Measurement: Measurement
+      Name: string
+    }
 
-open HttpHandlers
+let ingredient volume measurement name = 
+    { Measurement = measurement volume
+      Name = name
+    }
 
-let routes =
-    choose [ GET    >=> route  "/recipes"    >=> getRecipes 
-             POST   >=> route  "/recipe"     >=> postRecipe
-             PUT    >=> route  "/recipe"     >=> putRecipe
-             DELETE >=> routef "/recipe/%O" deleteRecipe
-             RequestErrors.NOT_FOUND "Not found"
-           ]
+type Meal =
+    | Breakfast
+    | Lunch
+    | Dinner
+    | Desert
 
-let configureApp (app : IApplicationBuilder) =
-    app.UseGiraffe routes
+type Recipe =
+    { Id: System.Guid
+      Title: string
+      Meal: Meal
+      Time: float
+      Steps: string list
+      Ingredients: Ingredient list
+      Portions: int
+      SubRecipes: System.Guid list
+    }
 
-let configureServices (services : IServiceCollection) =
-    services.AddGiraffe() |> ignore
-
-[<EntryPoint>]
-let main args =
-    Host.CreateDefaultBuilder(args)
-        .ConfigureWebHostDefaults(
-            fun webHostBuilder ->
-                webHostBuilder
-                    .Configure(Action<IApplicationBuilder> configureApp)
-                    .ConfigureServices(configureServices)
-                    |> ignore)
-        .Build()
-        .Run()
-    0
+let createRecipe title meal time steps ingredients portions subRecipes =
+    { Id = System.Guid.NewGuid()
+      Title = title
+      Meal = meal
+      Time = time
+      Steps = steps
+      Ingredients = ingredients
+      Portions = portions
+      SubRecipes = subRecipes
+    }
