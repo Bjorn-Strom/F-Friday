@@ -66,7 +66,7 @@ type Fakabase () =
         recipes.[recipeToUpdate.Id] <- recipeToUpdate
 
     member __.DeleteRecipe (recipeId: System.Guid) =
-        recipes.Remove(recipeId)
+        recipes.Remove(recipeId) |> ignore
 
 
 let fakabase = Fakabase()
