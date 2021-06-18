@@ -12,13 +12,11 @@ type Measurement =
 
 type Ingredient =
     { Measurement: Measurement
-      Name: string
-    }
-
+      Name: string }
+      
 let ingredient volume measurement name = 
     { Measurement = measurement volume
-      Name = name
-    }
+      Name = name }
 
 type Meal =
     | Breakfast
@@ -34,8 +32,7 @@ type Recipe =
       Steps: string list
       Ingredients: Ingredient list
       Portions: int
-      SubRecipes: System.Guid list
-    }
+      SubRecipes: System.Guid list }
 
 let createRecipe title meal time steps ingredients portions subRecipes =
     { Id = System.Guid.NewGuid()
@@ -45,5 +42,4 @@ let createRecipe title meal time steps ingredients portions subRecipes =
       Steps = steps
       Ingredients = ingredients
       Portions = portions
-      SubRecipes = subRecipes
-    }
+      SubRecipes = List.map (fun r -> r.Id) subRecipes }
