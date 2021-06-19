@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net5.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Client.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Shared\Shared.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Fable.Core" Version="3.2.8" />
+    <PackageReference Include="Fable.Elmish.React" Version="4.0.0-alpha-1" />
+    <PackageReference Include="Fable.React" Version="7.4.1" />
+    <PackageReference Include="Fss-lib" Version="2.0.2" />
+  </ItemGroup>
+
+</Project>

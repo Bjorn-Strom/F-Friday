@@ -4,11 +4,14 @@
     <TargetFramework>net5.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Recipe.fs" />
+    <Compile Include="Database.fs" />
     <Compile Include="HttpHandlers.fs" />
-    <Compile Include="Program.fs" />
+    <Compile Include="Server.fs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Giraffe" Version="5.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Shared\Shared.fsproj" />
   </ItemGroup>
 </Project>
