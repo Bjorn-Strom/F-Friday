@@ -6,7 +6,7 @@ Hei og velkommen til den andre posten i en serie om programmeringsspråket F#!
 
 ## Hva står på menyen?
 Systemet er nokså enkelt og består av:
-- **Measurements** er målenheter. Her kommer vi til å implementere noen av de enhetene som stadig vekk dukker opp. Disse kan se slik ut: 10g, 1ss eller lignende.
+- **Measurements** er målenheter. Her kommer vi til å implementere noen av de enhetene som stadig vekk dukker opp. Disse kan se slik ut: *10g*, *1ss* eller lignende.
 - **Ingredients**. Som er ingrediensene en oppskrift kan bestå av. En ingrediens består av en målenhet og et navn.
 - **Recipe**. Selve oppskriften blir den største typen vi kommer til å lage i dag. Den kommer til å ha en Id så vi kan unikt identifisere oppskrifter. Vi vil vite slags måltid det er, frokost, middag, lunsj eller dessert. Hvor lang tid det vil ta å lage dette om man følger oppskriften. Steg som beskriver hvordan man lager maten og alle ingrediensene som er nødvendig. Vi skal også ha et felt som sier hvor mange porsjoner denne retten består. Helt til slutt trenger vi under-oppskrifter, så en oppskrift kan lenke til andre oppskrifter.
 
