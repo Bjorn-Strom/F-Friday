@@ -44,6 +44,9 @@ Icon
 Network Trash Folder
 Temporary Items
 .apdisk
+.parcel.cache/
+dist/
+client/.parcel-cache/
 
 ### react ###
 .DS_*
