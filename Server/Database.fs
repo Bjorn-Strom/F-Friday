@@ -24,6 +24,7 @@ let fakabase = Fakabase()
 let koktPotet = 
         (createRecipe 
            "Kokt potet"
+           "En klassiker, skikkelig digg ellerno."
             Dinner
             20.
             [ "Skrubb og skyll potetene"
@@ -32,18 +33,19 @@ let koktPotet =
             ]
             [ ingredient 800. G "Potet"; ingredient 1. L "Vann"; ingredient 1. Ts "Salt" ]
             4
-            [])
+            )
 fakabase.AddRecipe koktPotet
 fakabase.AddRecipe 
         (createRecipe
             "Koteletter med kokt potet"
+            "Oi oi oi så hærlig"
             Dinner
             5.
             [  "Grill kotelettene i 3-4 minutt på hver side, dryss med salt og pepper"
             ] 
             [ ingredient 1. Ts "Salt"; ingredient 0.5 Ts "Pepper"; ingredient 4. Stk "Kotelett" ]
             4
-            [ koktPotet.Id ])
+            )
 
 let getAllRecipes () = fakabase.GetRecipes ()
 let addRecipe newRecipe =

@@ -1,24 +1,26 @@
 module Shared
 
 type Measurement = 
-    | Kg of float
-    | G of float
-    | Mg of float
-    | L of float
-    | Dl of float
-    | Ml of float
-    | Ms of float
-    | Ss of float
-    | Ts of float
-    | Stk of float
+    | Kg
+    | G 
+    | Mg 
+    | L 
+    | Dl 
+    | Ml
+    | Ms 
+    | Ss 
+    | Ts 
+    | Stk 
 
 type Ingredient =
-    { Measurement: Measurement
+    { Volume: float
+      Measurement: Measurement
       Name: string
     }
 
 let ingredient volume measurement name = 
-    { Measurement = measurement volume
+    { Volume = volume
+      Measurement = measurement 
       Name = name
     }
 
@@ -28,24 +30,31 @@ type Meal =
     | Dinner
     | Desert
 
+let mealToNorwegian meal =
+  match meal with
+  | Breakfast -> "Frokost"
+  | Lunch -> "Lunsj"
+  | Dinner -> "Middag"
+  | Desert -> "Dessert"
+
 type Recipe =
     { Id: System.Guid
       Title: string
+      Description: string
       Meal: Meal
       Time: float
       Steps: string list
       Ingredients: Ingredient list
       Portions: int
-      SubRecipes: System.Guid list
     }
 
-let createRecipe title meal time steps ingredients portions subRecipes =
+let createRecipe title description meal time steps ingredients portions =
     { Id = System.Guid.NewGuid()
       Title = title
+      Description = description
       Meal = meal
       Time = time
       Steps = steps
       Ingredients = ingredients
       Portions = portions
-      SubRecipes = subRecipes
     }

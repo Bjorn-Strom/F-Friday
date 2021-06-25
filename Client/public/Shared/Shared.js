@@ -1,5 +1,5 @@
 import { Record, Union } from "../.fable/fable-library.3.2.4/Types.js";
-import { int32_type, list_type, class_type, record_type, string_type, union_type, float64_type } from "../.fable/fable-library.3.2.4/Reflection.js";
+import { int32_type, list_type, class_type, record_type, string_type, float64_type, union_type } from "../.fable/fable-library.3.2.4/Reflection.js";
 import { newGuid } from "../.fable/fable-library.3.2.4/Guid.js";
 
 export class Measurement extends Union {
@@ -14,23 +14,24 @@ export class Measurement extends Union {
 }
 
 export function Measurement$reflection() {
-    return union_type("Shared.Measurement", [], Measurement, () => [[["Item", float64_type]], [["Item", float64_type]], [["Item", float64_type]], [["Item", float64_type]], [["Item", float64_type]], [["Item", float64_type]], [["Item", float64_type]], [["Item", float64_type]], [["Item", float64_type]], [["Item", float64_type]]]);
+    return union_type("Shared.Measurement", [], Measurement, () => [[], [], [], [], [], [], [], [], [], []]);
 }
 
 export class Ingredient extends Record {
-    constructor(Measurement, Name) {
+    constructor(Volume, Measurement, Name) {
         super();
+        this.Volume = Volume;
         this.Measurement = Measurement;
         this.Name = Name;
     }
 }
 
 export function Ingredient$reflection() {
-    return record_type("Shared.Ingredient", [], Ingredient, () => [["Measurement", Measurement$reflection()], ["Name", string_type]]);
+    return record_type("Shared.Ingredient", [], Ingredient, () => [["Volume", float64_type], ["Measurement", Measurement$reflection()], ["Name", string_type]]);
 }
 
 export function ingredient(volume, measurement, name) {
-    return new Ingredient(measurement(volume), name);
+    return new Ingredient(volume, measurement, name);
 }
 
 export class Meal extends Union {
@@ -48,25 +49,42 @@ export function Meal$reflection() {
     return union_type("Shared.Meal", [], Meal, () => [[], [], [], []]);
 }
 
+export function mealToNorwegian(meal) {
+    switch (meal.tag) {
+        case 1: {
+            return "Lunsj";
+        }
+        case 2: {
+            return "Middag";
+        }
+        case 3: {
+            return "Dessert";
+        }
+        default: {
+            return "Frokost";
+        }
+    }
+}
+
 export class Recipe extends Record {
-    constructor(Id, Title, Meal, Time, Steps, Ingredients, Portions, SubRecipes) {
+    constructor(Id, Title, Description, Meal, Time, Steps, Ingredients, Portions) {
         super();
         this.Id = Id;
         this.Title = Title;
+        this.Description = Description;
         this.Meal = Meal;
         this.Time = Time;
         this.Steps = Steps;
         this.Ingredients = Ingredients;
         this.Portions = (Portions | 0);
-        this.SubRecipes = SubRecipes;
     }
 }
 
 export function Recipe$reflection() {
-    return record_type("Shared.Recipe", [], Recipe, () => [["Id", class_type("System.Guid")], ["Title", string_type], ["Meal", Meal$reflection()], ["Time", float64_type], ["Steps", list_type(string_type)], ["Ingredients", list_type(Ingredient$reflection())], ["Portions", int32_type], ["SubRecipes", list_type(class_type("System.Guid"))]]);
+    return record_type("Shared.Recipe", [], Recipe, () => [["Id", class_type("System.Guid")], ["Title", string_type], ["Description", string_type], ["Meal", Meal$reflection()], ["Time", float64_type], ["Steps", list_type(string_type)], ["Ingredients", list_type(Ingredient$reflection())], ["Portions", int32_type]]);
 }
 
-export function createRecipe(title, meal, time, steps, ingredients, portions, subRecipes) {
-    return new Recipe(newGuid(), title, meal, time, steps, ingredients, portions, subRecipes);
+export function createRecipe(title, description, meal, time, steps, ingredients, portions) {
+    return new Recipe(newGuid(), title, description, meal, time, steps, ingredients, portions);
 }
 
