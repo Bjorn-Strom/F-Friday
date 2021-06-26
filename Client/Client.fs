@@ -14,7 +14,7 @@ type RemoteData<'t> =
     | Failure of string
 
 type View =
-    | RecipeDetails
+    | RecipeDetails 
     | Breakfasts
     | Lunches
     | Dinners
@@ -174,7 +174,7 @@ let Recipe recipe =
     ]
 
 [<ReactComponent>]
-let MealView recipes meal =
+let MealView recipes meal setRecipeView =
     Html.div [
         prop.fss [
             Display.flex
@@ -185,7 +185,7 @@ let MealView recipes meal =
             yield! 
                 recipes
                 |> List.filter (fun r -> r.Meal = meal)
-                |> List.map (fun r -> Button r.Title (fun _ -> ()) Transparent)
+                |> List.map (fun r -> Button r.Title (fun _ -> setRecipeView r) Transparent)
         ]
     ]
 
@@ -295,6 +295,9 @@ let NewRecipeView () =
 let Container (recipes: Recipe list) =
     let (currentRecipe, setCurrentRecipe) = React.useState<Recipe> (List.head recipes)
     let (view, setView) = React.useState<View> RecipeDetails
+    let setRecipeView recipe =
+        setCurrentRecipe recipe
+        setView RecipeDetails
     Html.div [
         prop.fss [
             Display.flex
@@ -308,10 +311,10 @@ let Container (recipes: Recipe list) =
             Menu setView
             match view with
             | RecipeDetails -> Recipe currentRecipe
-            | Breakfasts -> MealView recipes Breakfast
-            | Lunches -> MealView recipes Lunch
-            | Dinners -> MealView recipes Dinner
-            | Desserts -> MealView recipes Desert
+            | Breakfasts -> MealView recipes Breakfast setRecipeView
+            | Lunches -> MealView recipes Lunch setRecipeView
+            | Dinners -> MealView recipes Dinner setRecipeView
+            | Desserts -> MealView recipes Desert setRecipeView
             | NewRecipe -> NewRecipeView ()
             | EditRecipe -> Html.h1 "Edit a recipe"
         ]

@@ -179,6 +179,7 @@ export function Recipe(recipe) {
 }
 
 export function MealView(mealViewInputProps) {
+    const setRecipeView = mealViewInputProps.setRecipeView;
     const meal = mealViewInputProps.meal;
     const recipes = mealViewInputProps.recipes;
     return createElement("div", createObj(ofArray([Feliz_prop__prop_fss_Static_Z3BB76C00(ofArray([Display_get_flex(), FlexDirection_get_column()])), ["children", Interop_reactApi.Children.toArray(Array.from(toList(delay(() => {
@@ -188,6 +189,7 @@ export function MealView(mealViewInputProps) {
         }))), delay(() => map((r_1) => createElement(Button, {
             text: r_1.Title,
             onClick: (_arg1) => {
+                setRecipeView(r_1);
             },
             color: new ButtonColor(0),
         }), filter((r) => equals(r.Meal, meal), recipes))));
@@ -280,20 +282,28 @@ export function Container(containerInputProps) {
     const patternInput_1 = useFeliz_React__React_useState_Static_1505(new View(0));
     const view = patternInput_1[0];
     const setView = patternInput_1[1];
+    const setRecipeView = (recipe) => {
+        setCurrentRecipe(recipe);
+        setView(new View(0));
+    };
     return createElement("div", createObj(ofArray([Feliz_prop__prop_fss_Static_Z3BB76C00(ofArray([Display_get_flex(), FlexDirection_get_column(), AlignItems_get_center(), op_BangGreater(new Html_Html(1), singleton_1(textFont)), op_BangGreater(new Html_Html(44), singleton_1(headingFont))])), ["children", Interop_reactApi.Children.toArray(Array.from(toList(delay(() => append(singleton(createElement(Menu, {
         setView: setView,
     })), delay(() => ((view.tag === 1) ? singleton(createElement(MealView, {
         recipes: recipes,
         meal: new Meal_1(0),
+        setRecipeView: setRecipeView,
     })) : ((view.tag === 2) ? singleton(createElement(MealView, {
         recipes: recipes,
         meal: new Meal_1(1),
+        setRecipeView: setRecipeView,
     })) : ((view.tag === 3) ? singleton(createElement(MealView, {
         recipes: recipes,
         meal: new Meal_1(2),
+        setRecipeView: setRecipeView,
     })) : ((view.tag === 4) ? singleton(createElement(MealView, {
         recipes: recipes,
         meal: new Meal_1(3),
+        setRecipeView: setRecipeView,
     })) : ((view.tag === 5) ? singleton(createElement(NewRecipeView, null)) : ((view.tag === 6) ? singleton(createElement("h1", {
         children: ["Edit a recipe"],
     })) : singleton(createElement(Recipe, currentRecipe))))))))))))))]])));
