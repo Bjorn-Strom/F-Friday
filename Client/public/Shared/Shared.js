@@ -1,5 +1,6 @@
 import { Record, Union } from "../.fable/fable-library.3.2.4/Types.js";
 import { int32_type, list_type, class_type, record_type, string_type, float64_type, union_type } from "../.fable/fable-library.3.2.4/Reflection.js";
+import { mapIndexed, ofArray } from "../.fable/fable-library.3.2.4/List.js";
 import { newGuid } from "../.fable/fable-library.3.2.4/Guid.js";
 
 export class Measurement extends Union {
@@ -15,6 +16,46 @@ export class Measurement extends Union {
 
 export function Measurement$reflection() {
     return union_type("Shared.Measurement", [], Measurement, () => [[], [], [], [], [], [], [], [], [], []]);
+}
+
+export const measurementStrings = ofArray(["Kg", "G", "Mg", "L", "Dl", "Ml", "Ms", "Ss", "Ts", "Stk"]);
+
+export function stringToMeasurement(_arg1) {
+    switch (_arg1) {
+        case "Kg": {
+            return new Measurement(0);
+        }
+        case "G": {
+            return new Measurement(1);
+        }
+        case "Mg": {
+            return new Measurement(2);
+        }
+        case "L": {
+            return new Measurement(3);
+        }
+        case "Dl": {
+            return new Measurement(4);
+        }
+        case "Ml": {
+            return new Measurement(5);
+        }
+        case "Ms": {
+            return new Measurement(6);
+        }
+        case "Ss": {
+            return new Measurement(7);
+        }
+        case "Ts": {
+            return new Measurement(8);
+        }
+        case "Stk": {
+            return new Measurement(9);
+        }
+        default: {
+            return new Measurement(9);
+        }
+    }
 }
 
 export class Ingredient extends Record {
@@ -48,6 +89,8 @@ export class Meal extends Union {
 export function Meal$reflection() {
     return union_type("Shared.Meal", [], Meal, () => [[], [], [], []]);
 }
+
+export const mealList = ofArray([new Meal(0), new Meal(1), new Meal(2), new Meal(3)]);
 
 export function mealToNorwegian(meal) {
     switch (meal.tag) {
@@ -86,5 +129,9 @@ export function Recipe$reflection() {
 
 export function createRecipe(title, description, meal, time, steps, ingredients, portions) {
     return new Recipe(newGuid(), title, description, meal, time, steps, ingredients, portions);
+}
+
+export function List_replaceIndex(index, newItem, list) {
+    return mapIndexed((currentIndex, oldItem) => ((currentIndex === index) ? newItem : oldItem), list);
 }
 

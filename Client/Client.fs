@@ -8,17 +8,19 @@ open Fss.Feliz
 
 open Shared
 
-// Banner: Tittel: Frokost - Lunsj - Middag - Dessert - Min Handleliste | SØK |
-// Hovedside:
-// Uten valg: Tilfeldig oppskrift
-// Med valg: Liste over oppskrifter
-// Med oppskrift valgt: Se den oppskriften
-// 
-
 type RemoteData<'t> =
     | Fetching
     | Data of 't
     | Failure of string
+
+type View =
+    | RecipeDetails
+    | Breakfasts
+    | Lunches
+    | Dinners
+    | Desserts
+    | NewRecipe
+    | EditRecipe
 
 // Fonts
 let headingFont = FontFamily.custom "Nunito"
@@ -34,7 +36,6 @@ let Button (text: string) onClick color =
         prop.onClick onClick
         prop.fss [
             Border.none
-            textFont
             FontSize' (px 18)
             headingFont
             match color with
@@ -58,7 +59,6 @@ let SearchBar () =
         prop.placeholder "Søk etter oppskrift"
         prop.fss [
             Height' (pct 100)
-            textFont
             BoxSizing.borderBox
             Padding' (px 5)
             PaddingLeft' (px 20)
@@ -68,7 +68,7 @@ let SearchBar () =
     ]
 
 [<ReactComponent>]
-let Menu() =
+let Menu setView =
     Html.nav [
         prop.fss [
             BackgroundColor.green
@@ -89,16 +89,14 @@ let Menu() =
                     Width' (vw 50.)
                 ]
                 prop.children [
-                    Html.h1 [
-                        prop.fss [ headingFont ]
-                        prop.text "Slafs!" 
-                    ]
+                    Html.h1 "Slafs!" 
                     Html.div [
                         SearchBar ()
-                        Button "Frokost" (fun _ -> ()) Transparent
-                        Button "Lunsj" (fun _ -> ()) Transparent
-                        Button "Middag" (fun _ -> ()) Transparent
-                        Button "Dessert" (fun _ -> ()) Transparent
+                        Button "+" (fun _ -> setView NewRecipe) Transparent
+                        Button "Frokost" (fun _ -> setView Breakfasts) Transparent
+                        Button "Lunsj" (fun _ -> setView Lunches) Transparent
+                        Button "Middag" (fun _ -> setView Dinners) Transparent
+                        Button "Dessert" (fun _ -> setView Desserts) Transparent
                         Button "Min handleliste" (fun _ -> ()) Transparent
                     ]
                 ]
@@ -124,10 +122,7 @@ let Recipe recipe =
         prop.children [
             Html.div [
                 Html.h1 [
-                    prop.fss [ 
-                        headingFont
-                        JustifyContent.center
-                    ]
+                    prop.fss [ JustifyContent.center ]
                     prop.text recipe.Title
                 ]
                 Html.p [
@@ -135,10 +130,8 @@ let Recipe recipe =
                     prop.text $"{mealToNorwegian recipe.Meal} på {recipe.Time} minutter."
                 ]
             ]
-            Html.p [
-                prop.fss [ textFont ]
-                prop.text recipe.Description
-            ]
+            Html.p recipe.Description
+            
             Html.div [
                 prop.fss [
                     Display.grid
@@ -148,10 +141,7 @@ let Recipe recipe =
                 prop.children [
                     Html.div [
                         prop.children [
-                            Html.h3 [
-                                prop.fss [ headingFont ]
-                                prop.text "Ingredienser"
-                            ]
+                            Html.h3 "Ingredienser"
                             Html.p $"For {recipe.Portions} porsjoner: "
                             yield! (selectIngredients recipe
                                     |> List.map (fun i ->
@@ -163,10 +153,8 @@ let Recipe recipe =
                     ]
                     Html.div [
                         prop.children [
-                            Html.h3 [
-                                prop.fss [ headingFont ]
-                                prop.text "Steg"
-                            ]
+                            Html.h3 "Steg"
+                            
                             yield! (recipe.Steps
                                     |> List.map (fun s ->
                                         Html.p [
@@ -186,18 +174,146 @@ let Recipe recipe =
     ]
 
 [<ReactComponent>]
+let MealView recipes meal =
+    Html.div [
+        prop.fss [
+            Display.flex
+            FlexDirection.column
+        ]
+        prop.children [
+            Html.h1 $"{mealToNorwegian meal} oppskrifter"
+            yield! 
+                recipes
+                |> List.filter (fun r -> r.Meal = meal)
+                |> List.map (fun r -> Button r.Title (fun _ -> ()) Transparent)
+        ]
+    ]
+
+[<ReactComponent>]
+let NewRecipeView () =
+    let (title, setTitle) = React.useState ""
+    let (description, setDescription) = React.useState ""
+    let (Meal, setMeal) = React.useState Breakfast
+    let (time, setTime) = React.useState 0.
+    let (steps, setSteps) = React.useState<string list> []
+    let (ingredients, setIngredients) = React.useState<Map<string, Ingredient>> Map.empty
+    let (portions, setPortions) = React.useState 0
+
+    let Label (text: string) = Html.label [ prop.text text ]
+
+    let FormElement title (children: ReactElement seq) =
+        Html.div [
+            prop.fss [
+                Display.flex
+                FlexDirection.column
+            ]
+            prop.children [
+                Label title
+                yield! children
+            ]
+        ]
+
+    let IngredientElement () =
+        Html.div [
+            prop.fss [ Display.flex ]
+            prop.children [
+                FormElement "Volum" [
+                    Html.input [
+                        prop.type' "number"
+                    ]
+                ]
+                FormElement "Enhet" [
+                    Html.select [
+                        prop.children (measurementStrings 
+                                       |> List.map (fun n -> Html.option n))
+                    ]
+                ]
+                FormElement "Navn" [
+                    Html.input [
+                        prop.type' "text"
+                    ]
+                ]
+            ]
+        ]
+
+    Html.div [
+        prop.children [
+            Html.h1 "Ny oppskrift"
+
+            FormElement "Tittel" [
+                Html.input [
+                    prop.onChange setTitle
+                    prop.value title
+                ]
+            ]
+            FormElement "Beskrivelse" [
+                Html.input [
+                    prop.onChange setDescription
+                    prop.value description
+                ]
+            ]
+            FormElement "Måltid" [
+                Html.select [
+                ]
+            ]
+            FormElement "Tid" [
+                Html.input [
+                    prop.type' "number"
+                    prop.onChange (float >> setTime)
+                    prop.value time
+                ]
+            ]
+            FormElement "Steg" [
+                yield!
+                    [0..List.length steps]
+                    |> List.mapi (fun index _ -> 
+                        Html.textarea [
+                            prop.value (if (List.length steps > index) then steps.[index] else "")
+                            prop.onChange (fun (newStep: string) -> 
+                                if List.length steps > index then
+                                    setSteps (List.replaceIndex index newStep steps)
+                                else
+                                    setSteps (steps @ [newStep]))
+                        ])
+            ]
+
+            FormElement "Ingredienser"
+                ([0..Map.count ingredients+1]
+                |> List.map (fun _ -> IngredientElement ()))
+
+            FormElement "Porsjoner" [
+                Html.input [
+                    prop.type' "number"
+                    prop.onChange (int >> setPortions)
+                ]
+            ]
+        ]
+    ]
+
+
+[<ReactComponent>]
 let Container (recipes: Recipe list) =
     let (currentRecipe, setCurrentRecipe) = React.useState<Recipe> (List.head recipes)
+    let (view, setView) = React.useState<View> RecipeDetails
     Html.div [
         prop.fss [
             Display.flex
             FlexDirection.column
             AlignItems.center
+            !> FssTypes.Html.All [ textFont ]
+            !> FssTypes.Html.Header [ headingFont ]
         ]
 
         prop.children [
-            Menu()
-            Recipe currentRecipe
+            Menu setView
+            match view with
+            | RecipeDetails -> Recipe currentRecipe
+            | Breakfasts -> MealView recipes Breakfast
+            | Lunches -> MealView recipes Lunch
+            | Dinners -> MealView recipes Dinner
+            | Desserts -> MealView recipes Desert
+            | NewRecipe -> NewRecipeView ()
+            | EditRecipe -> Html.h1 "Edit a recipe"
         ]
     ]
 

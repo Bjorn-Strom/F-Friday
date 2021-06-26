@@ -12,6 +12,33 @@ type Measurement =
     | Ts 
     | Stk 
 
+let measurementStrings = [
+  "Kg"
+  "G"
+  "Mg"
+  "L"
+  "Dl"
+  "Ml"
+  "Ms"
+  "Ss"
+  "Ts"
+  "Stk"
+]
+
+let stringToMeasurement =
+  function
+  | "Kg" -> Kg
+  | "G" -> G
+  | "Mg" -> Mg
+  | "L" -> L
+  | "Dl" -> Dl
+  | "Ml" -> Ml
+  | "Ms" -> Ms
+  | "Ss" -> Ss
+  | "Ts" -> Ts
+  | "Stk" -> Stk
+  | _ -> Stk
+
 type Ingredient =
     { Volume: float
       Measurement: Measurement
@@ -29,6 +56,13 @@ type Meal =
     | Lunch
     | Dinner
     | Desert
+
+let mealList = [
+  Breakfast
+  Lunch
+  Dinner
+  Desert
+]
 
 let mealToNorwegian meal =
   match meal with
@@ -58,3 +92,8 @@ let createRecipe title description meal time steps ingredients portions =
       Ingredients = ingredients
       Portions = portions
     }
+
+[<RequireQualifiedAccess>]
+module List = 
+  let replaceIndex index newItem list =
+    List.mapi (fun currentIndex oldItem -> if currentIndex = index then newItem else oldItem) list
