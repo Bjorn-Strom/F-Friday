@@ -5,18 +5,15 @@ import { createElement } from "react";
 import { equals, createObj } from "./.fable/fable-library.3.2.4/Util.js";
 import { Feliz_prop__prop_fss_Static_Z3BB76C00 } from "./.fable/Fss-lib-feliz.1.0.0/FssFeliz.fs.js";
 import { singleton, append, delay, toList } from "./.fable/fable-library.3.2.4/Seq.js";
-import { BorderRadius$0027, Border_get_none } from "./.fable/Fss-lib.2.0.2/css/Border.fs.js";
-import { fr, counterStyle, vw, pct, px } from "./.fable/Fss-lib.2.0.2/Functions.fs.js";
+import { Border_get_none } from "./.fable/Fss-lib.2.0.2/css/Border.fs.js";
+import { fr, counterStyle, vw, px } from "./.fable/Fss-lib.2.0.2/Functions.fs.js";
 import { ColorBase$1__get_green, ColorBase$1__get_blue, ColorBase$1__get_transparent } from "./.fable/Fss-lib.2.0.2/Types/Color.fs.js";
 import { Background_BackgroundColor } from "./.fable/Fss-lib.2.0.2/css/Background.fs.js";
 import { Hover } from "./.fable/Fss-lib.2.0.2/PseudoClass.fs.js";
 import { Cursor_get_pointer } from "./.fable/Fss-lib.2.0.2/css/Cursor.fs.js";
 import { Color } from "./.fable/Fss-lib.2.0.2/css/Color.fs.js";
 import { head, append as append_1, item, length, mapIndexed, filter, singleton as singleton_1, empty, map, ofArray } from "./.fable/fable-library.3.2.4/List.js";
-import { useReact_useEffect_Z101E1A95, useFeliz_React__React_useState_Static_1505 } from "./.fable/Feliz.1.45.0/React.fs.js";
-import { Width$0027, Height$0027 } from "./.fable/Fss-lib.2.0.2/css/ContentSize.fs.js";
-import { Position_BoxSizing_get_borderBox } from "./.fable/Fss-lib.2.0.2/css/Position.fs.js";
-import { PaddingLeft$0027, Padding$0027 } from "./.fable/Fss-lib.2.0.2/css/Padding.fs.js";
+import { Height$0027, Width$0027 } from "./.fable/Fss-lib.2.0.2/css/ContentSize.fs.js";
 import { MarginTop$0027, MarginLeft$0027 } from "./.fable/Fss-lib.2.0.2/css/Margin.fs.js";
 import { Display_get_grid, Display_get_flex } from "./.fable/Fss-lib.2.0.2/css/Display.fs.js";
 import { FlexDirection_get_column, JustifyContent_get_spaceBetween, AlignItems_get_center, FlexDirection_get_row, JustifyContent_get_center } from "./.fable/Fss-lib.2.0.2/css/Flex.fs.js";
@@ -29,6 +26,7 @@ import { CounterIncrement_increment_46C3C923 } from "./.fable/Fss-lib.2.0.2/css/
 import { Before } from "./.fable/Fss-lib.2.0.2/PseudoElement.fs.js";
 import { ContentClass__counter_Z6D206E48 } from "./.fable/Fss-lib.2.0.2/Types/Content.fs.js";
 import { Content_Content } from "./.fable/Fss-lib.2.0.2/css/Content.fs.js";
+import { useReact_useEffect_Z101E1A95, useFeliz_React__React_useState_Static_1505 } from "./.fable/Feliz.1.45.0/React.fs.js";
 import { count, empty as empty_1 } from "./.fable/fable-library.3.2.4/Map.js";
 import { parse } from "./.fable/fable-library.3.2.4/Double.js";
 import { rangeDouble } from "./.fable/fable-library.3.2.4/Range.js";
@@ -96,21 +94,12 @@ export function Button(buttonInputProps) {
     return createElement("button", createObj(ofArray([["children", text], ["onClick", onClick], Feliz_prop__prop_fss_Static_Z3BB76C00(toList(delay(() => append(singleton(Border_get_none()), delay(() => append(singleton(FontSize$0027(px(18))), delay(() => append(singleton(headingFont), delay(() => append(singleton(ColorBase$1__get_transparent(Background_BackgroundColor)), delay(() => singleton(Hover(ofArray([Cursor_get_pointer(), ColorBase$1__get_blue(Color)]))))))))))))))])));
 }
 
-export function SearchBar() {
-    const patternInput = useFeliz_React__React_useState_Static_1505("");
-    const setSearchTerm = patternInput[1];
-    const searchTerm = patternInput[0];
-    return createElement("input", createObj(ofArray([["type", "text"], ["value", searchTerm], ["onChange", (ev) => {
-        setSearchTerm(ev.target.value);
-    }], ["placeholder", "Søk etter oppskrift"], Feliz_prop__prop_fss_Static_Z3BB76C00(ofArray([Height$0027(pct(100)), Position_BoxSizing_get_borderBox(), Padding$0027(px(5)), PaddingLeft$0027(px(20)), BorderRadius$0027(px(10)), Border_get_none()]))])));
-}
-
 export function Menu(menuInputProps) {
     let children;
     const setView = menuInputProps.setView;
     return createElement("nav", createObj(ofArray([Feliz_prop__prop_fss_Static_Z3BB76C00(ofArray([ColorBase$1__get_green(Background_BackgroundColor), Width$0027(vw(100)), Height$0027(px(70)), MarginLeft$0027(px(-8)), MarginTop$0027(px(-10)), Display_get_flex(), JustifyContent_get_center()])), ["children", Interop_reactApi.Children.toArray([createElement("div", createObj(ofArray([Feliz_prop__prop_fss_Static_Z3BB76C00(ofArray([Display_get_flex(), FlexDirection_get_row(), AlignItems_get_center(), JustifyContent_get_spaceBetween(), Width$0027(vw(50))])), ["children", Interop_reactApi.Children.toArray([createElement("h1", {
         children: ["Slafs!"],
-    }), (children = ofArray([createElement(SearchBar, null), createElement(Button, {
+    }), (children = ofArray([createElement(Button, {
         text: "+",
         onClick: (_arg1) => {
             setView(new View(5));

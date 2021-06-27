@@ -50,24 +50,6 @@ let Button (text: string) onClick color =
     ]
 
 [<ReactComponent>]
-let SearchBar () =
-    let (searchTerm, setSearchTerm) = React.useState ""
-    Html.input [
-        prop.type' "text"
-        prop.value searchTerm
-        prop.onChange setSearchTerm
-        prop.placeholder "Søk etter oppskrift"
-        prop.fss [
-            Height' (pct 100)
-            BoxSizing.borderBox
-            Padding' (px 5)
-            PaddingLeft' (px 20)
-            BorderRadius' (px 10)
-            Border.none
-        ]
-    ]
-
-[<ReactComponent>]
 let Menu setView =
     Html.nav [
         prop.fss [
@@ -91,7 +73,6 @@ let Menu setView =
                 prop.children [
                     Html.h1 "Slafs!" 
                     Html.div [
-                        SearchBar ()
                         Button "+" (fun _ -> setView NewRecipe) Transparent
                         Button "Frokost" (fun _ -> setView Breakfasts) Transparent
                         Button "Lunsj" (fun _ -> setView Lunches) Transparent
