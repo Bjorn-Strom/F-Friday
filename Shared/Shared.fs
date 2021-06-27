@@ -42,14 +42,12 @@ let stringToMeasurement =
 type Ingredient =
     { Volume: float
       Measurement: Measurement
-      Name: string
-    }
+      Name: string }
 
 let ingredient volume measurement name = 
     { Volume = volume
       Measurement = measurement 
-      Name = name
-    }
+      Name = name }
 
 type Meal =
     | Breakfast
@@ -57,12 +55,11 @@ type Meal =
     | Dinner
     | Desert
 
-let mealList = [
-  Breakfast
-  Lunch
-  Dinner
-  Desert
-]
+let mealList = 
+  [ Breakfast
+    Lunch
+    Dinner
+    Desert ]
 
 let mealToNorwegian meal =
   match meal with
@@ -90,8 +87,7 @@ let createRecipe title description meal time steps ingredients portions =
       Time = time
       Steps = steps
       Ingredients = ingredients
-      Portions = portions
-    }
+      Portions = portions }
 
 [<RequireQualifiedAccess>]
 module List = 

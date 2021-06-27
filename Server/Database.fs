@@ -21,20 +21,19 @@ type Fakabase () =
 
 
 let fakabase = Fakabase()
-let koktPotet = 
-        (createRecipe 
-           "Kokt potet"
-           "En klassiker, skikkelig digg ellerno."
-            Dinner
-            20.
-            [ "Skrubb og skyll potetene"
-              "Del potetene i 2"
-              "Kok dem i 10-15 minutter til de er gjennomkokte"
-            ]
-            [ ingredient 800. G "Potet"; ingredient 1. L "Vann"; ingredient 1. Ts "Salt" ]
-            4
-            )
-fakabase.AddRecipe koktPotet
+fakabase.AddRecipe 
+    (createRecipe 
+         "Kokt potet"
+         "En skikkelig, potensielt smakløs, klassiker som du som inngår i ganske mange andre retter."
+         Dinner
+         20.
+         [ "Skrubb og skyll potetene"
+           "Del potetene i 2"
+           "Kok dem i 10-15 minutter til de er gjennomkokte" ]
+         [ ingredient 800. G "Potet"
+           ingredient 1. L "Vann"
+           ingredient 1. Ts "Salt" ]
+         4)
 fakabase.AddRecipe 
         (createRecipe
             "Koteletter med kokt potet"
@@ -44,8 +43,7 @@ fakabase.AddRecipe
             [  "Grill kotelettene i 3-4 minutt på hver side, dryss med salt og pepper"
             ] 
             [ ingredient 1. Ts "Salt"; ingredient 0.5 Ts "Pepper"; ingredient 4. Stk "Kotelett" ]
-            4
-            )
+            4)
 
 let getAllRecipes () = fakabase.GetRecipes ()
 let addRecipe newRecipe =

@@ -1,7 +1,7 @@
-import { Record, Union } from "../.fable/fable-library.3.2.4/Types.js";
-import { int32_type, list_type, class_type, record_type, string_type, float64_type, union_type } from "../.fable/fable-library.3.2.4/Reflection.js";
-import { mapIndexed, ofArray } from "../.fable/fable-library.3.2.4/List.js";
-import { newGuid } from "../.fable/fable-library.3.2.4/Guid.js";
+import { Record, Union } from "../.fable/fable-library.3.2.8/Types.js";
+import { int32_type, list_type, class_type, record_type, string_type, float64_type, union_type } from "../.fable/fable-library.3.2.8/Reflection.js";
+import { mapIndexed, ofArray } from "../.fable/fable-library.3.2.8/List.js";
+import { newGuid } from "../.fable/fable-library.3.2.8/Guid.js";
 
 export class Measurement extends Union {
     constructor(tag, ...fields) {

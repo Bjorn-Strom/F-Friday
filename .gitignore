@@ -47,6 +47,7 @@ Temporary Items
 .parcel.cache/
 dist/
 client/.parcel-cache/
+public/*.js
 
 ### react ###
 .DS_*
