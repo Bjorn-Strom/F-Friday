@@ -1,26 +1,26 @@
 module Recipe
 
 type Measurement = 
-    | Kg of float
-    | G of float
-    | Mg of float
-    | L of float
-    | Dl of float
-    | Ml of float
-    | Ms of float
-    | Ss of float
-    | Ts of float
-    | Stk of float
+    | Kg
+    | G 
+    | Mg 
+    | L 
+    | Dl 
+    | Ml
+    | Ms 
+    | Ss 
+    | Ts 
+    | Stk 
 
 type Ingredient =
-    { Measurement: Measurement
-      Name: string
-    }
+    { Volume: float
+      Measurement: Measurement
+      Name: string }
 
 let ingredient volume measurement name = 
-    { Measurement = measurement volume
-      Name = name
-    }
+    { Volume = volume
+      Measurement = measurement 
+      Name = name }
 
 type Meal =
     | Breakfast
@@ -31,24 +31,24 @@ type Meal =
 type Recipe =
     { Id: System.Guid
       Title: string
+      Description: string
       Meal: Meal
       Time: float
       Steps: string list
       Ingredients: Ingredient list
       Portions: int
-      SubRecipes: System.Guid list
     }
 
-let createRecipe title meal time steps ingredients portions subRecipes =
+let createRecipe title description meal time steps ingredients portions =
     { Id = System.Guid.NewGuid()
       Title = title
+      Description = description
       Meal = meal
       Time = time
       Steps = steps
       Ingredients = ingredients
-      Portions = portions
-      SubRecipes = subRecipes
-    }
+      Portions = portions }
+
 
 // Alt dette skal vi erstatte med en database senere
 
@@ -70,29 +70,35 @@ type Fakabase () =
 
 
 let fakabase = Fakabase()
-let koktPotet = 
-        (createRecipe 
-           "Kokt potet"
-            Dinner
-            20.
-            [ "Skrubb og skyll potetene"
-              "Del potetene i 2"
-              "Kok dem i 10-15 minutter til de er gjennomkokte"
-            ]
-            [ ingredient 800. G "Potet"; ingredient 1. L "Vann"; ingredient 1. Ts "Salt" ]
-            4
-            [])
-fakabase.AddRecipe koktPotet
 fakabase.AddRecipe 
-        (createRecipe
-            "Koteletter med kokt potet"
-            Dinner
-            5.
-            [  "Grill kotelettene i 3-4 minutt på hver side, dryss med salt og pepper"
-            ] 
-            [ ingredient 1. Ts "Salt"; ingredient 0.5 Ts "Pepper"; ingredient 4. Stk "Kotelett" ]
-            4
-            [ koktPotet.Id ])
+  (createRecipe 
+     "Kokt potet"
+     "En skikkelig, potensielt smakløs, klassiker som du som inngår i ganske mange andre retter."
+     Dinner
+     20.
+     [ "Skrubb og skyll potetene"
+       "Del potetene i 2"
+       "Kok dem i 10-15 minutter til de er gjennomkokte" ]
+     [ ingredient 800. G "Potet"
+       ingredient 1. L "Vann"
+       ingredient 1. Ts "Salt" ]
+     4)
+fakabase.AddRecipe 
+  (createRecipe
+    "Pytt i panne"
+    "Det evige hvilestedet til gamle middager."
+    Dinner
+    20.
+    [ "Stek baconet og del det inn i biter"
+      "Del potetene og inn i terninger og hakk løk."
+      "Stek poteten og løken sammen i bacon-fettet"
+      "Bland inn baconet"
+      "Del paprikaen i biter og dryss over"]
+    [ ingredient 2. Stk "Bacon"
+      ingredient 4. Stk "Kokte poteter"
+      ingredient 1. Stk "Løk"
+      ingredient 0.25 Stk "Paprika"]
+      2)
 
 let getAllRecipes () = fakabase.GetRecipes ()
 let addRecipe newRecipe =
