@@ -1,4 +1,4 @@
-### F# Friday 2
+# F# Friday 2
 
 Hei og velkommen til den andre posten i en serie om programmeringsspråket F#!
 
@@ -8,17 +8,17 @@ gangen skal vi bruke litt mer tid til å se på hva F# har å by på samtidig so
 skal skrive litt kode. Vi skal nemlig starte å implementere et system for å
 organisere matoppskrifter!
 
-#### Hva står på menyen?
+## Hva står på menyen?
 
 Systemet er nokså enkelt og består av: 
 
-* **Measurements **er målenheter. Her kommer vi til å implementere noen av de
+- **Measurements** er målenheter. Her kommer vi til å implementere noen av de
 enhetene som stadig vekk dukker opp. Disse kan se slik ut: *g, ss *eller
 lignende. 
-* **Ingredients **er ingrediensene en oppskrift kan bestå av. En ingrediens består
+- **Ingredients** er ingrediensene en oppskrift kan bestå av. En ingrediens består
 av en målenhet, volum og et navn.
-* **Recipe***. *Selve oppskriften blir den største typen vi kommer til å lage i
-dag. I tillegg til en tittel og beskrivelse trenger den en *Id *så vi kan unikt
+- **Recipe**. Selve oppskriften blir den største typen vi kommer til å lage i
+dag. I tillegg til en tittel og beskrivelse trenger den en *Id* så vi kan unikt
 identifisere oppskrifter. Vi vil vite hva slags måltid det er, frokost, middag,
 lunsj eller dessert. Hvor lang tid det vil ta å lage dette om man følger
 oppskriften. Steg som beskriver hvordan man lager maten og alle ingrediensene
@@ -27,7 +27,7 @@ retten kommer til å ha.
 
 Alt dette skal vi nå implementere i F#. Dette blir gøy!
 
-#### Let’s get cooking!
+## Let’s get cooking!
 
 Om du ønsker å skrive kode as we go kan du skrive følgende i din terminal for å
 opprette et enkelt F# prosjekt: `dotnet new console -lang "F#" -o
@@ -107,15 +107,15 @@ Dette definerer `ingredient` funksjonen.
 let ingredient amount measurement name = 
     { Amount = amount
       Measurement = measurement 
-      Name = name }}
+      Name = name }
 ```
 
 Den tar inn:
 
-* **Amount** som er hvor mye av gitt enhet vi vil ha.
-* **Measurement**, som er selve målenhet som vi kan bruke som en konstruktør for
+- **Amount** som er hvor mye av gitt enhet vi vil ha.
+- **Measurement**, som er selve målenhet som vi kan bruke som en konstruktør for
 denne typen
-* **Name** som er navnet vi ønsker å gi ingrediensen vår.
+- **Name** som er navnet vi ønsker å gi ingrediensen vår.
 
 Denne funksjonen oppretter type for oss og vi kan bruke den slik: `ingredient
 200. G "Smør"`og ser mye mer ut som det vi ville.
@@ -137,13 +137,13 @@ Nå skal vi legge inn selve oppskriftstypen. Dette blir den største typen vi ha
 skrevet så langt og kommer til å bruke alle typene vi har skrevet over. Som vi
 allerede vet trenger den å ha:
 
-* **Id** så vi kan unikt identifisere oppskrifter.
-* **Tittel **og **beskrivelse**.
-* **Måltidstype **som vi allerde har definert.
-* **Tilberedningstid **som kan være timer eller minutter.
-* **Stegene **som inngår i å lage matretten.
-* **Ingrediensene **man trenger.
-* **Porsjoner** så vi vet hvor mange vi kan invitere til middag.
+- **Id** så vi kan unikt identifisere oppskrifter.
+- **Tittel **og **beskrivelse**.
+- **Måltidstype **som vi allerde har definert.
+- **Tilberedningstid **som kan være timer eller minutter.
+- **Stegene **som inngår i å lage matretten.
+- **Ingrediensene **man trenger.
+- **Porsjoner** så vi vet hvor mange vi kan invitere til middag.
 
 Tilberedningstiden kan være et antall timer eller minutter. For eksempel: 
 
@@ -203,7 +203,7 @@ let createRecipe meal title description time steps ingredients portions =
       Portions = portions }
 ```
 
-#### For en saftig biff!
+## For en saftig biff!
 
 Nå som vi kan lage oppskrifter burde vi starte med en klassiker. Noe vi sikkert
 ofte trenger for å lage norsk husmannskost er kokte poteter. Så la oss lage en
@@ -249,7 +249,7 @@ let pyttIPanne =
 Merk bruken av `Minutes`og `Portions`her til å lage disse to ekstra typene vi
 definerte. Gjør ikke dette koden veldig leselig?
 
-#### Og til dessert
+## Og til dessert
 
 Så hva har vi egentlig fått til? 
 
@@ -263,7 +263,7 @@ hjelpefunksjon så de blir enklere å lage.
 hjelpefunksjon så vi slipper å lage GUIDer for hånd hver gang.
 * Til slutt lagde vi to flotte oppskrifter.
 
-Om du vil se koden i sin hellhet kan du se koden på GitHub(LINK HER).
+Om du vil se koden i sin helhet kan du se koden på GitHub.
 
 Dette er et veldig enkelt og simpelt system, men det tillater oss å lage enkle
 oppskrifter. Dette kan vi jobbe videre med og det er akkurat det vi skal! Neste
