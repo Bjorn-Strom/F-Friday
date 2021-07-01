@@ -15,6 +15,7 @@ bin
 *.exe
 !.paket/paket.bootstrapper.exe
 .ionide/
+.idea/
 
 ### macOS ###
 # General
