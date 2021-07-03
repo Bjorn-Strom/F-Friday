@@ -18,7 +18,42 @@ export function Measurement$reflection() {
     return union_type("Shared.Measurement", [], Measurement, () => [[], [], [], [], [], [], [], [], [], []]);
 }
 
-export const measurementStrings = ofArray(["Kg", "G", "Mg", "L", "Dl", "Ml", "Ms", "Ss", "Ts", "Stk"]);
+export const measurementList = ofArray([new Measurement(0), new Measurement(1), new Measurement(2), new Measurement(3), new Measurement(4), new Measurement(5), new Measurement(6), new Measurement(7), new Measurement(8), new Measurement(9)]);
+
+export function measurementToString(_arg1) {
+    switch (_arg1.tag) {
+        case 1: {
+            return "G";
+        }
+        case 2: {
+            return "Mg";
+        }
+        case 3: {
+            return "L";
+        }
+        case 4: {
+            return "Dl";
+        }
+        case 5: {
+            return "Ml";
+        }
+        case 6: {
+            return "Ms";
+        }
+        case 7: {
+            return "Ss";
+        }
+        case 8: {
+            return "Ts";
+        }
+        case 9: {
+            return "Stk";
+        }
+        default: {
+            return "Kg";
+        }
+    }
+}
 
 export function stringToMeasurement(_arg1) {
     switch (_arg1) {
@@ -105,6 +140,26 @@ export function mealToNorwegian(meal) {
         }
         default: {
             return "Frokost";
+        }
+    }
+}
+
+export function norwegianToMeal(name) {
+    switch (name) {
+        case "Frokost": {
+            return new Meal(0);
+        }
+        case "Lunsj": {
+            return new Meal(1);
+        }
+        case "Middag": {
+            return new Meal(2);
+        }
+        case "Dessert": {
+            return new Meal(3);
+        }
+        default: {
+            return new Meal(2);
         }
     }
 }

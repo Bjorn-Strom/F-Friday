@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.26124.0
 MinimumVisualStudioVersion = 15.0.26124.0
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "RecipeTracker", "Server\RecipeTracker.fsproj", "{542B5C94-EDA4-4ECE-9E6A-A4CFC4C6C048}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Server", "Server\Server.fsproj", "{542B5C94-EDA4-4ECE-9E6A-A4CFC4C6C048}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Shared", "Shared\Shared.fsproj", "{D4EACFF7-12DF-4236-B4E1-F30291D1BF9D}"
 EndProject

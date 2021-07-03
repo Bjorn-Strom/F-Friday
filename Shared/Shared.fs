@@ -1,52 +1,54 @@
 module Shared
 
-type Measurement = 
+type Measurement =
     | Kg
-    | G 
-    | Mg 
-    | L 
-    | Dl 
+    | G
+    | Mg
+    | L
+    | Dl
     | Ml
-    | Ms 
-    | Ss 
-    | Ts 
-    | Stk 
+    | Ms
+    | Ss
+    | Ts
+    | Stk
 
-let measurementStrings = [
-  "Kg"
-  "G"
-  "Mg"
-  "L"
-  "Dl"
-  "Ml"
-  "Ms"
-  "Ss"
-  "Ts"
-  "Stk"
-]
+let measurementList = [ Kg; G; Mg; L; Dl; Ml; Ms; Ss; Ts; Stk ]
+
+let measurementToString =
+  function
+  | Kg  -> "Kg"
+  | G   -> "G"
+  | Mg  -> "Mg"
+  | L   -> "L"
+  | Dl  -> "Dl"
+  | Ml  ->"Ml"
+  | Ms  -> "Ms"
+  | Ss  -> "Ss"
+  | Ts  -> "Ts"
+  | Stk -> "Stk"
 
 let stringToMeasurement =
   function
-  | "Kg" -> Kg
-  | "G" -> G
-  | "Mg" -> Mg
-  | "L" -> L
-  | "Dl" -> Dl
-  | "Ml" -> Ml
-  | "Ms" -> Ms
-  | "Ss" -> Ss
-  | "Ts" -> Ts
+  | "Kg"  -> Kg
+  | "G"   -> G
+  | "Mg"  -> Mg
+  | "L"   -> L
+  | "Dl"  -> Dl
+  | "Ml"  -> Ml
+  | "Ms"  -> Ms
+  | "Ss"  -> Ss
+  | "Ts"  -> Ts
   | "Stk" -> Stk
-  | _ -> Stk
+  | _     -> Stk
 
 type Ingredient =
     { Volume: float
       Measurement: Measurement
       Name: string }
 
-let ingredient volume measurement name = 
+let ingredient volume measurement name =
     { Volume = volume
-      Measurement = measurement 
+      Measurement = measurement
       Name = name }
 
 type Meal =
@@ -55,7 +57,7 @@ type Meal =
     | Dinner
     | Desert
 
-let mealList = 
+let mealList =
   [ Breakfast
     Lunch
     Dinner
@@ -67,6 +69,14 @@ let mealToNorwegian meal =
   | Lunch -> "Lunsj"
   | Dinner -> "Middag"
   | Desert -> "Dessert"
+
+let norwegianToMeal name =
+    match name with
+    | "Frokost" -> Breakfast
+    | "Lunsj" -> Lunch
+    | "Middag" -> Dinner
+    | "Dessert" -> Desert
+    | _ -> Dinner
 
 type Recipe =
     { Id: System.Guid
@@ -90,6 +100,6 @@ let createRecipe title description meal time steps ingredients portions =
       Portions = portions }
 
 [<RequireQualifiedAccess>]
-module List = 
+module List =
   let replaceIndex index newItem list =
     List.mapi (fun currentIndex oldItem -> if currentIndex = index then newItem else oldItem) list
