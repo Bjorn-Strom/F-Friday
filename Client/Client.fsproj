@@ -6,6 +6,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Types.fs" />
+    <Compile Include="StoreProvider.fs" />
     <Compile Include="Client.fs" />
   </ItemGroup>
 

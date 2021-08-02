@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "dotnet fable watch . -o ./public --run parcel serve ./public/index.html",
+    "start": "dotnet fable watch . -o ./public --run parcel serve public/index.html",
     "build": "dotnet fable . -o ./public --run parcel build public/index.html",
     "clean": "rm -rf dist && rm -rf public/*.js public/shared public/.fable"
   },

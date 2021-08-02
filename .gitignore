@@ -16,10 +16,12 @@ bin
 !.paket/paket.bootstrapper.exe
 .ionide/
 .idea/
+Client/public/*.js
 
 ### macOS ###
 # General
 .DS_Store
+
 .AppleDouble
 .LSOverride
 

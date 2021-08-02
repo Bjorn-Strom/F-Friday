@@ -7,20 +7,9 @@ open Fss
 open Fss.Feliz
 
 open Shared
+open Types
+open Store
 
-type RemoteData<'t> =
-    | Fetching
-    | Data of 't
-    | Failure of string
-
-type View =
-    | RecipeDetails
-    | Breakfasts
-    | Lunches
-    | Dinners
-    | Desserts
-    | NewRecipe
-    | EditRecipe
 
 // Fonts
 let headingFont = FontFamily.custom "Nunito"
@@ -53,7 +42,8 @@ let Button (text: string) onClick color =
     ]
 
 [<ReactComponent>]
-let Menu setView =
+let Menu () =
+    let (_, dispatch) = useStore()
     Html.nav [
         prop.fss [
             BackgroundColor.green
@@ -76,11 +66,11 @@ let Menu setView =
                 prop.children [
                     Html.h1 "Slafs!"
                     Html.div [
-                        Button "+" (fun _ -> setView NewRecipe) Transparent
-                        Button "Frokost" (fun _ -> setView Breakfasts) Transparent
-                        Button "Lunsj" (fun _ -> setView Lunches) Transparent
-                        Button "Middag" (fun _ -> setView Dinners) Transparent
-                        Button "Dessert" (fun _ -> setView Desserts) Transparent
+                        Button "+" (fun _ -> dispatch <| SetCurrentView NewRecipe) Transparent
+                        Button "Frokost" (fun _ -> dispatch <| SetCurrentView Breakfasts) Transparent
+                        Button "Lunsj" (fun _ -> dispatch <| SetCurrentView  Lunches) Transparent
+                        Button "Middag" (fun _ -> dispatch <| SetCurrentView  Dinners) Transparent
+                        Button "Dessert" (fun _ -> dispatch <| SetCurrentView  Desserts) Transparent
                         Button "Min handleliste" (fun _ -> ()) Transparent
                     ]
                 ]
@@ -158,7 +148,14 @@ let Recipe recipe =
     ]
 
 [<ReactComponent>]
-let MealView recipes meal setRecipeView =
+let Homeview() =
+    Html.div [
+        Html.p "Hello"
+    ]
+
+[<ReactComponent>]
+let MealView meal setRecipeView =
+    let (state, _) = useStore()
     Html.div [
         prop.fss [
             Display.flex
@@ -167,7 +164,7 @@ let MealView recipes meal setRecipeView =
         prop.children [
             Html.h1 $"{mealToNorwegian meal} oppskrifter"
             yield!
-                recipes
+                state.Recipes
                 |> List.filter (fun r -> r.Meal = meal)
                 |> List.map (fun r -> Button r.Title (fun _ -> setRecipeView r) Transparent)
         ]
@@ -311,12 +308,9 @@ let NewRecipeView () =
 
 
 [<ReactComponent>]
-let Container (recipes: Recipe list) =
-    let (currentRecipe, setCurrentRecipe) = React.useState<Recipe> (List.head recipes)
-    let (view, setView) = React.useState<View> RecipeDetails
-    let setRecipeView recipe =
-        setCurrentRecipe recipe
-        setView RecipeDetails
+let PageView() =
+    let (state, dispatch) = useStore()
+    let setRecipeView recipe = dispatch (SetCurrentView (RecipeDetails recipe))
     Html.div [
         prop.fss [
             Display.flex
@@ -327,21 +321,24 @@ let Container (recipes: Recipe list) =
         ]
 
         prop.children [
-            Menu setView
-            match view with
-            | RecipeDetails -> Recipe currentRecipe
-            | Breakfasts -> MealView recipes Breakfast setRecipeView
-            | Lunches -> MealView recipes Lunch setRecipeView
-            | Dinners -> MealView recipes Dinner setRecipeView
-            | Desserts -> MealView recipes Desert setRecipeView
+            Menu ()
+            match state.View with
+            | Home -> Homeview ()
+            | RecipeDetails recipe -> Recipe recipe
+            | Breakfasts -> MealView Breakfast setRecipeView
+            | Lunches -> MealView Lunch setRecipeView
+            | Dinners -> MealView Dinner setRecipeView
+            | Desserts -> MealView Desert setRecipeView
             | NewRecipe -> NewRecipeView ()
             | EditRecipe -> Html.h1 "Edit a recipe"
         ]
     ]
 
+
+
 [<ReactComponent>]
-let App() =
-    let (recipes, setRecipes) = React.useState<Recipe list RemoteData>(Fetching)
+let Container() =
+    let (state, dispatch) = useStore()
 
     React.useEffect((fun () ->
         fetch "http://localhost:5000/api/recipes" []
@@ -351,19 +348,21 @@ let App() =
             match result with
             | Ok recipes -> Data recipes
             | Error e -> Failure e)
-        |> Promise.map setRecipes
+        |> Promise.map (fun r -> dispatch (SetRecipes r))
         |> Promise.start)
         , [| |])
 
-    match recipes with
-    | Fetching -> Html.div [
-        prop.text "Laster..."
-        ]
-    | Data recipes -> Container recipes
+    match state.Recipes with
+    | Fetching -> Html.div [ prop.text "Laster..." ]
+    | Data _ -> PageView()
     | Failure e -> Html.div [
         prop.fss [ textFont ]
         prop.text $"En feil skjedde under henting av oppskrifter: {e}"
     ]
+
+
+[<ReactComponent>]
+let App () = StoreProvider <| Container ()
 
 open Browser.Dom
 
