@@ -1,271 +1,192 @@
-# F# Friday 2
+# F# Friday 3
 
-Hei og velkommen til den andre posten i en serie om programmeringsspråket F#!
+Hei og velkommen til den tredje posten i en serie om programmeringsspråket F#!
 
-[Forrige gang](https://blogg.bekk.no/f-friday-1-39f63618d2e4) startet vi med en
-kort og lett introduksjon til hva F# er og hva du kan bruke det til. Denne
-gangen skal vi bruke litt mer tid til å se på hva F# har å by på samtidig som vi
-skal skrive litt kode. Vi skal nemlig starte å implementere et system for å
-organisere matoppskrifter!
+[Forrige gang]() startet vi å definere typene vår lille matoppskrifts-app skal bestå av. Vi lagde også noen enkle hjelpefunksjoner som lar oss opprette oppskrifter. Denne gangen skal vi putte denne koden inn i en backend, slik at vi kan utføre CRUD operasjoner på og med oppskriftene våre.
 
-## Hva står på menyen?
+## Dagens agenda 📋
 
-Systemet er nokså enkelt og består av: 
+Denne gangen skal vi se på hvordan man kan strukturere en server i F#. Her finnes det ganske mange forskjellige biblioteker som alle har sine egne filosofier og egne måter å gjøre ting på. Samtidig så håndterer de fleste HTTP-requests på en ganske så lik måte. Så kunnskap er ganske overførbar mellom disse forskjellige alternativene. Vi skal se på en som er ganske populær: nemlig [Giraffe](https://github.com/giraffe-fsharp/Giraffe), men aller først må vi en tur innom fugleriket.
 
-- **Measurements** er målenheter. Her kommer vi til å implementere noen av de
-enhetene som stadig vekk dukker opp. Disse kan se slik ut: *g, ss *eller
-lignende. 
-- **Ingredients** er ingrediensene en oppskrift kan bestå av. En ingrediens består
-av en målenhet, volum og et navn.
-- **Recipe**. Selve oppskriften blir den største typen vi kommer til å lage i
-dag. I tillegg til en tittel og beskrivelse trenger den en *Id* så vi kan unikt
-identifisere oppskrifter. Vi vil vite hva slags måltid det er, frokost, middag,
-lunsj eller dessert. Hvor lang tid det vil ta å lage dette om man følger
-oppskriften. Steg som beskriver hvordan man lager maten og alle ingrediensene
-som er nødvendig. Og til slutt et felt som sier hvor mange porsjoner denne
-retten kommer til å ha. 
+## Kestrel 🐦
+Dersom man har jobbet litt i Dotnet-verden fra før kjenner man antageligvis igjen navnet [Kestrel](https://docs.microsoft.com/en-us/aspnet/core/fundamentals/servers/kestrel?view=aspnetcore-5.0). Det er web server implementasjonen som er standard i ASP.NET Core. Giraffe biblioteket er en funksjonell wrapper på Kestrel for å forenkle dens bruk i F#.
 
-Alt dette skal vi nå implementere i F#. Dette blir gøy!
+Giraffe lar deg konfigurere både app og services som du kanskje kjenner igjen fra C#, samtidig som den lar deg jobbe med routes på en enkel måte. Den største forskjellen er nok at de har kvittet seg med den objekt- og dependency injection orienterte måten å gjøre ting på. Nå trenger man kun å forholde seg til enkle funksjoner og funksjonskomposisjon.
 
-## Let’s get cooking!
-
-Om du ønsker å skrive kode as we go kan du skrive følgende i din terminal for å
-opprette et enkelt F# prosjekt: `dotnet new console -lang "F#" -o
-recipeTracker`eller du kan bruke din IDE til å opprette noe lignende.
-
-La oss starte med å implementere målenheter! Vi kommer til å bruke en
-[discriminated
-union](https://fsharpforfunandprofit.com/posts/discriminated-unions/)(DU) for å
-representere disse. Jeg liker å tenke på denne data strukturen som en **eller***
-*type. For eksempel om vi ønsker å definere en type for å håndtere login
-resultat kunne den se slik ut:
+I Giraffe fungerer routing slik at du har funksjoner for hver HTTP metode. Disse funksjonene kan du bruke med funksjonskomposisjon for å definere hva som skal skje for hver av disse rutene. For eksempel:
 
 ```fsharp
-type LoginResult =
-     | Success of User
-     | Error of string
+let ruter =
+    choose
+        [ POST >=> choose [ route "/login" >=> loginHandler
+                            route "/logout" >=> logoutHandler
+                          ]
+          GET >=> choose [ route "/ping"  >=> text "pong"
+                           route "/userInfo" >=> userInfoHandler
+                         ]
+        ]
 ```
-Da vil en LoginResult kunne være suksess **eller** *en feilmelding. Hver av
-casene her har en egen type knyttet til seg. Dersom innloggingen gikk greit kan
-vi hente ut brukeren, dersom den feilet har vi feilmeldingen i string format.
-Hver av disse casene kan brukes som konstruktører av *LoginResult *typen. Det
-kan se slik ut: `Error "Feil passord!"`. Discriminated unions er utrolig
-kraftige og denne artikkelen får ikke helt til å formidle det på en god måte, så
-vi kommer til å se mer på dem senere.
 
-Armert med denne stekespaden kan vi nå modelere målenheter i systemet vårt. Vi
-skulle jo bruke en DU så la oss bare definere den.
+Det første man nok legger merke til her er den underlige operatoren: >=>. Operatoren er shorthand for funksjonen composeog kan tenkes på som en annen måte å komponere sammen funksjoner på. Den kalles for en fishbone operator og utfører kleisli-komposisjon, du kan lese mer i [denne](https://functional.christmas/2019/14) artikkelen, men det er ikke nødvendig for å følge med videre her.
+
+I eksempelet over har vi definert 4 ruter i en liste. Vi ser at vi har 2 POST endepunkt hvor man kan velge mellom 2 ruter, login og logout. Dersom ruten matcher en av disse så utføres den tilsvarende funksjonen. Så en POST request til ruten `/login` kaller funksjonen `loginHandler`.
+
+Det er ganske enkelt og det er veldig fort gjort å sette opp nye ruter. Giraffe har også noen innebygde funksjoner som gjør det enklere å returnere tekst eller json direkte. Dette ser vi i `ping` endepunktet.
+
+Dette er også veldig enkelt å bygge videre på. La oss si at `Get "/userInfo"` ruten trenger autorisering. Da kan du lage en funksjon som tar seg av det og den kobles rett inn i komposisjonen:
 
 ```fsharp
-type Measurement = 
-    | Kg
-    | G 
-    | Mg 
-    | L 
-    | Dl 
-    | Ml
-    | Ms 
-    | Ss 
-    | Ts 
-    | Stk 
+route "/userInfo" >=> mustBeLoggedIn >=> userInfoHandler
 ```
 
-Vi har ikke knyttet noen typer til denne, som også går greit. Da kan den tenkes
-mer på som en enum (**merk: **det er faktisk ikke en enum). Her har vi en utvalg
-vanlige enheter og vi kan alltids utvide senere om vi vil. Vi får dessverre ikke
-utrettet så mye kun med målenheter. Så la oss lage ingredienser også.
+## Giraffe setup 🦒
+Okei nok teori. Learn by doing, I say!
 
-I oppskrifter finner man gjerne målenheter på dette formatet: 200g smør *eller*
-1ss sukker, så la oss prøve å modellere noe som ser slik ut. Til dette passer
-en record bra. En record er en egentlig bare en datastruktur som holder på data.
-En ingrediens kan da se slik ut:
+Forhåpentligvis har du allerede et prosjekt liggende fra forrige artikkel for nå trenger vi å hente ned Giraffe nuget pakken. I skrivende stund er nyeste versjon 5.0.0, så skriv dette i en terminal i prosjektet ditt:
 
 ```fsharp
-type Ingredient =
-    { Amount: float
-      Measurement: Measurement
-      Name: string }
+dotnet add package Giraffe - version 5.0.0
 ```
 
-Denne typen består av målenheten vi allerede har definert, en mengde og en
-string som sier hva slags ingrediens dette er. Nå kan vi lage ingredienser slik:
+Med Giraffe installert så kan vi sette opp en helt enkel backend. La oss starte med å definere en testrute så vi kan sjekke at alt funker:
+```fsharp
+let routes = choose [ route "/ping" >=> text "pong"]
+```
+
+Dersom du ikke spesifiserer en spesifikk HTTP metode så vil den funke på alle.
+
+Vi trenger noen funksjoner for å sette opp Giraffe også.
 
 ```fsharp
-{ Amount = 200.
-  Measurement = G
-  Name = "Smør" }
+let configureApp (app: IApplicationBuilder) =
+    app.UseGiraffe routes
+let configureServices (services: IServiceCollection) =
+    services.AddGiraffe() |> ignore
 ```
 
-Problemet med dette er at det ikke ligner veldig på det man finner i
-oppskrifter. Vi ville jo skrive noe som ligner på *200g smør. *Vi kan derfor
-opprette en hjelpefunksjon som lager ingredienser for oss.
+Disse funksjonene vil tilsvare det du finner i en typisk `startup.cs` fil i et C# backend prosjekt, så om du ønsker å legge til CORS eller andre ting er dette stedet å gjøre det på. I disse funksjonene har vi sagt hvilke ruter vi ønsker å bruke samt lagt til Giraffe.
 
-Dette definerer `ingredient`funksjonen. 
-
-Dette definerer `ingredient` funksjonen. 
-```fsharp
-let ingredient amount measurement name = 
-    { Amount = amount
-      Measurement = measurement 
-      Name = name }
-```
-
-Den tar inn:
-
-- **Amount** som er hvor mye av gitt enhet vi vil ha.
-- **Measurement**, som er selve målenhet som vi kan bruke som en konstruktør for
-denne typen
-- **Name** som er navnet vi ønsker å gi ingrediensen vår.
-
-Denne funksjonen oppretter type for oss og vi kan bruke den slik: `ingredient
-200. G "Smør"`og ser mye mer ut som det vi ville.
-
-#### Oi, se her kommer hovedretten
-
-Når det kommer til oppskrifter ønsker vi å vite hva slags måltid denne retten
-tilhører. Er det en rett man lager til frokost, lunsj, middag eller dessert?
-Hvis du som meg tenker **eller** her er nok atter en *DU* løsningen. 
-```fsharp
-type Meal =
-    | Breakfast
-    | Lunch
-    | Dinner
-    | Desert
-```
-
-Nå skal vi legge inn selve oppskriftstypen. Dette blir den største typen vi har
-skrevet så langt og kommer til å bruke alle typene vi har skrevet over. Som vi
-allerede vet trenger den å ha:
-
-- **Id** så vi kan unikt identifisere oppskrifter.
-- **Tittel **og **beskrivelse**.
-- **Måltidstype **som vi allerde har definert.
-- **Tilberedningstid **som kan være timer eller minutter.
-- **Stegene **som inngår i å lage matretten.
-- **Ingrediensene **man trenger.
-- **Porsjoner** så vi vet hvor mange vi kan invitere til middag.
-
-Tilberedningstiden kan være et antall timer eller minutter. For eksempel: 
-
-* 1.5 time
-* 20 minutter
-
-Så den tiden kan være timer **eller** minutter. Du gjetta riktig, vi trenger en
-DU!
+Det eneste vi mangler nå for å ha en fungerende backend er å koble alt dette sammen med en `webHostBuilder`. I Giraffe vil de se slik ut:
 
 ```fsharp
-type Time =
-    | Minutes of int
-    | Hours of float
+[<EntryPoint>]
+let main args =
+    Host.CreateDefaultBuilder(args)
+        .ConfigureWebHostDefaults(
+            fun webHostBuilder ->
+                webHostBuilder
+                    .Configure(Action<IApplicationBuilder> configureApp)
+                    .ConfigureServices(configureServices)
+                    |> ignore)
+        .Build()
+        .Run()
+    0
 ```
 
-Med denne typen kan vil oppskriften vår være ekstra typesikker, samtidig som vi
-får kvitte oss med *magic numbers.*
+Dette vil knytte alt sammen og initialisere serveren vår.
 
-Porsjoner skal være et tall, men det gir ikke mye mening at den bare er en tall.
-Vi ønsker ikke å blande denne inn i andre tall vi har i programmet vårt. For det
-første er det ikke veldig typesikkert og for det andre vil det gjøre koden vår
-mer leselig. Derfor skal vi lage en [single-case discriminated
-union](https://fsharpforfunandprofit.com/posts/designing-with-types-single-case-dus/).
-Hvor vi *wrapper* int typen vår inn i en annen type.
+La oss starte serveren vår og bruke en REST-klient til å sjekke endepunktet vårt.
+
+![alt text](works.png "Det funker!")
+
+It wooooooorks! Med 30 linjer kode har vi en fungerende backend.
+
+## Ruter 🪟
+
+La oss sette opp ruter til de forskjellige funksjonene vi ønsker å støtte. I første omgang så kan vi starte med å:
+
+- Hente ut alle oppskriftene.
+- Lagre nye oppskrifter.
+- Oppdatere en oppskrift.
+- Slette en oppskrift.
+
+For å få til dette så trenger vi disse metodene: `GET`, `POST`, `PUT` og `DELETE`
 
 ```fsharp
-type Portions = Portions of int
+let routes =
+    choose [ GET    >=> route  "/api/recipes"    >=> getRecipes 
+             POST   >=> route  "/api/recipe"     >=> postRecipe
+             PUT    >=> route  "/api/recipe"     >=> putRecipe
+             DELETE >=> routef "/api/recipe/%O" deleteRecipe
+             RequestErrors.NOT_FOUND "Not found"
+           ]
 ```
-Som vi så lenger tidligere kan nå `Portions`brukes som en konstruktør og dette
-kommer vi til å se snart.
 
-Først la oss bruke alt dette til å definere den siste typen vi skal lage i dag.
+I vår delete request sier vi også at vi forventer en GUID. Dette gjør vi ved å bruke `routef` funksjonen sammen med `%o` som er Giraffes måte å si at vi forventer en eller annen query parameter her. `%o` er GUID, men det finnes mange [flere](https://github.com/giraffe-fsharp/Giraffe/blob/master/DOCUMENTATION.md#routef).
+
+Her har vi også lagt inn en default rute, så dersom man har en request som ikke treffer noen av de definerte rutene så får vi en 404 - Not Found.
+
+Det vi trenger nå er å implementere disse funksjonene som rutene bruker.
+
+## Database? 📒
+Vanligvis når man har en backend har man også en database som lagrer data. Det skal vi også gjøre, men ikke denne gangen. Til å starte med skal vi gjøre det veldig enkelt og heller bruke en klasse og en C# dictionary til å lagre oppskriftene våre. Det betyr dessverre at dataen ikke blir persistert, men det er noe vi kan fikse senere. Implementasjonen av denne databasen er ikke så veldig viktig så den hopper jeg over her, men du kan finne den på github.
+
+Det jeg har gjort derimot er å lage wrapper funksjoner rundt metodene denne klassen tilbyr, så det blir enklere å bytte den ut senere.
 
 ```fsharp
-type Recipe =
-    { Id: System.Guid
-      Title: string
-      Description: string
-      Meal: Meal
-      Time: Time
-      Steps: string list
-      Ingredients: Ingredient list
-      Portions: Portions }
+let getAllRecipes () = fakabase.GetRecipes ()
+let addRecipe newRecipe =
+    fakabase.AddRecipe newRecipe
+let updateRecipe recipeToUpdate =
+    fakabase.UpdateRecipe recipeToUpdate
+let deleteRecipe id =
+    fakabase.DeleteRecipe id
 ```
-Her også ønsker vi en hjelpefunksjon så vi enklere kan lage oppskrifter. Da kan
-vi også slippe å manuelt lage nye GUIDer for hånd hele tiden.
+
+## HttpHandlers
+Det aller siste vi trenger for å få dette systemet til å fungere er noen [HttpHandlers](https://github.com/giraffe-fsharp/Giraffe/blob/master/DOCUMENTATION.md#httphandler). Det er funksjonene som håndterer http-requestene våre. Det vi vil at disse funksjonene skal gjøre er å konvertere JSON som kommer med nettverkskallet over til oppskriftstypen vi allerede har definert. Så skal de utføre en oppdatering mot databasen vår og til slutt returnere noe.
 
 ```fsharp
-let createRecipe meal title description time steps ingredients portions =
-    { Id = System.Guid.NewGuid()
-      Title = title
-      Description = description
-      Meal = meal
-      Time = time
-      Steps = steps
-      Ingredients = ingredients
-      Portions = portions }
+let getRecipes: HttpHandler =
+    fun (next: HttpFunc) (context: HttpContext) ->
+        json (Recipe.getAllRecipes ()) next context
+
+let postRecipe: HttpHandler =
+    fun (next: HttpFunc) (context: HttpContext) ->
+        task {
+            let! newRecipe = context.BindJsonAsync<Recipe.Recipe>()
+            Recipe.addRecipe newRecipe
+            return! getRecipes next context
+        }
+
+let putRecipe: HttpHandler =
+     fun (next: HttpFunc) (context: HttpContext) ->
+        task {
+            let! recipeToUpdate = context.BindJsonAsync<Recipe.Recipe>()
+            Recipe.updateRecipe recipeToUpdate
+            return! json recipeToUpdate next context
+        }
+
+let deleteRecipe (id: System.Guid): HttpHandler =
+        Recipe.deleteRecipe id
+        text $"Deleted recipe with id: {id}"
 ```
 
-## For en saftig biff!
+Noen ting å legge merke til her:
 
-Nå som vi kan lage oppskrifter burde vi starte med en klassiker. Noe vi sikkert
-ofte trenger for å lage norsk husmannskost er kokte poteter. Så la oss lage en
-oppskrift for det:
+- `next` er den neste http funksjonen som skal kjøres.
+- `context` har informasjon om http-requesten.
+- `task` er hvordan man kan bygge asynkrone kodeblokker, disse taskene oppfører seg likt som de gjør i C#.
+- Ut fra `context` kan vi mappe JSON bodyen over til oppskriftstypen vi har definert.
+- Vi kan kalle andre HttpHandlere fra HttpHandlers, det kan vi se i `deleteRecipe` hvor vi kaller text handleren.
 
-```fsharp
-let koktPotet = 
-  createRecipe 
-     Dinner
-     "Kokt potet"
-     "En skikkelig, potensielt smakløs, klassiker som du som inngår i ganske mange andre retter."
-     (Minutes 20)
-     [ "Skrubb og skyll potetene"
-       "Del potetene i 2"
-       "Kok dem i 10-15 minutter til de er gjennomkokte" ]
-     [ ingredient 800. G "Potet"
-       ingredient 1. L "Vann"
-       ingredient 1. Ts "Salt" ]
-     (Portions 4)
-```
-Nå som vi kan koke poteter kan vi lage en rett som trenger kokte poteter og et
-fint sted å bruke gamle middagsrester.
+Når alt denne er inne, og koden forhåpentligvis kompilerer, kan vi teste dette i rest-klient. Hos meg funker nå alle disse rutene, her er GET:
 
-```fsharp
-let pyttIPanne =
-  createRecipe
-    Dinner
-    "Pytt i panne"
-    "Det evige hvilestedet til gamle middager."
-    (Minutes 20)
-    [ "Stek baconet og del det inn i biter"
-      "Del potetene og inn i terninger og hakk løk."
-      "Stek poteten og løken sammen i bacon-fettet"
-      "Bland inn baconet"
-      "Del paprikaen i biter og dryss over"]
-    [ ingredient 2. Stk "Bacon"
-      ingredient 4. Stk "Kokte poteter"
-      ingredient 1. Stk "Løk"
-      ingredient 0.25 Stk "Paprika"]
-    (Portions 2)
-```
 
-Merk bruken av `Minutes`og `Portions`her til å lage disse to ekstra typene vi
-definerte. Gjør ikke dette koden veldig leselig?
+![alt text](get.png "Resultat fra get request")
 
-## Og til dessert
+## Og vi er i mål 🏁
+Da er vi ferdige. Det ble mye greier denne gangen så om du ønsker å se alt i sin helhet er koden å finne på github. Det eneste ekstra som finnes i repoet er CORS, en annen måte å serializere F# typer til JSON på og vår fakabase.
 
-Så hva har vi egentlig fått til? 
+Det vi har lært i dag er hvordan Giraffe fungerer og hvor enkelt det er å sette opp en simpel backend med det. Vi har sett hvordan Giraffe er bygd på Kestrel og at konseptene er like med det vi kjenner fra C#. Vi kan nå sette opp ruter og har fått lagd en falsk database som bruker koden vi skrev forrige gang til å forsyne oss med oppskrifter.
 
-Vi har:
+Jeg føler det er viktig å nevne at det finnes mange alternativer til Giraffe. Selv liker jeg [Saturn](https://saturnframework.org/) godt. Det er et bibliotek som bygd på Giraffe og abstraherer bort en del av oppsettet. Det finnes andre alternativer også: [Oryx](https://github.com/cognitedata/oryx), [Suave](https://github.com/SuaveIO/suave), [Falco](https://github.com/pimbrouwers/Falco) og sikkert flere jeg ikke kommer på i farta. Så her er det bare å leke seg.
 
-* Brukt *Discriminated Unions *for å modellere målenheter og måltider. Vi har også
-brukt dem til å gjøre koden vår typesikker og lettelselig.
-* Definert målenhetene med en *record* så vi kan lage ingredienser og laget en
-hjelpefunksjon så de blir enklere å lage.
-* Deretter laget vi typen til selve oppskriften. Her også brukte vi en
-hjelpefunksjon så vi slipper å lage GUIDer for hånd hver gang.
-* Til slutt lagde vi to flotte oppskrifter.
+Selv om vi nå kan dele oppskriftene våre med verden har serveren vår noen mangler:
+- Som vi allerede vet har vi ingen database. 
+- Ei heller har vi logging så om noen feil skulle inntreffe får vi aldri beskjed. 
+- Vi har ingen error håndtering, så dersom systemet ikke får til å parset JSON bodyen over til en oppskrift går det veldig galt.
 
-Om du vil se koden i sin helhet kan du se koden på GitHub.
+Vi har med andre ord mye forbedringspotensiale her.
 
-Dette er et veldig enkelt og simpelt system, men det tillater oss å lage enkle
-oppskrifter. Dette kan vi jobbe videre med og det er akkurat det vi skal! Neste
-gang skal vi flytte denne koden backend slik at vi kan serve våre egne og
-potensielt andres oppskrifter ut til verden!
+Neste gang skal vi lage en enkel frontend for dette systemet. Da skal vi lære hvordan vi kan dele kode mellom frontend og backend, bruke F# til å skrive react kode med typesikker markup og CSS. Det blir bra!

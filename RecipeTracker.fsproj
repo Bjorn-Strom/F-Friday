@@ -6,4 +6,9 @@
   <ItemGroup>
     <Compile Include="Program.fs" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Giraffe" Version="5.0.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+    <PackageReference Include="Thoth.Json.Giraffe" Version="5.0.0" />
+  </ItemGroup>
 </Project>
