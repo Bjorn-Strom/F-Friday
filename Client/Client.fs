@@ -15,27 +15,41 @@ open Store
 let headingFont = FontFamily.custom "Nunito"
 let textFont = FontFamily.custom "Raleway"
 
+// Colors
+let green = hex "1b5e20"
+let greenLight = hex "4c8c4a"
+let greenDark = hex "003300"
+let white = hex "f5f5f6"
+
 type ButtonColor =
     | Transparent
     | Green
+    | Black
+    | White
 
 [<ReactComponent>]
-let Button (text: string) onClick color =
+let Button (text: string) onClick backgroundColor color =
     Html.button [
         prop.text text
         prop.onClick onClick
         prop.fss [
             Border.none
+            Color' white
             FontSize' (px 18)
             headingFont
+            Cursor.pointer
+            match backgroundColor with
+            | Transparent -> BackgroundColor.transparent
+            | Green -> BackgroundColor' green
+            | Black -> BackgroundColor.black
+            | White -> BackgroundColor' white
             match color with
-            | Transparent ->
-                BackgroundColor.transparent
-            | Green ->
-                BackgroundColor.green
+            | Transparent -> Color.transparent
+            | Green -> Color' green
+            | Black -> Color.black
+            | White -> Color' white
             Hover [
-                Cursor.pointer
-                Color.blue
+                Color' greenDark
             ]
 
         ]
@@ -46,11 +60,12 @@ let Menu () =
     let (_, dispatch) = useStore()
     Html.nav [
         prop.fss [
-            BackgroundColor.green
+            BackgroundColor' green
             Width' (vw 100.)
             Height' (px 70)
             MarginLeft' (px -8)
             MarginTop' (px -10)
+            Color' white
             Display.flex
             JustifyContent.center
         ]
@@ -66,12 +81,11 @@ let Menu () =
                 prop.children [
                     Html.h1 "Slafs!"
                     Html.div [
-                        Button "+" (fun _ -> dispatch <| SetCurrentView NewRecipe) Transparent
-                        Button "Frokost" (fun _ -> dispatch <| SetCurrentView Breakfasts) Transparent
-                        Button "Lunsj" (fun _ -> dispatch <| SetCurrentView  Lunches) Transparent
-                        Button "Middag" (fun _ -> dispatch <| SetCurrentView  Dinners) Transparent
-                        Button "Dessert" (fun _ -> dispatch <| SetCurrentView  Desserts) Transparent
-                        Button "Min handleliste" (fun _ -> ()) Transparent
+                        Button "+" (fun _ -> dispatch <| SetCurrentView NewRecipe) Transparent White
+                        Button "Frokost" (fun _ -> dispatch <| SetCurrentView Breakfasts) Transparent White
+                        Button "Lunsj" (fun _ -> dispatch <| SetCurrentView  Lunches) Transparent White
+                        Button "Middag" (fun _ -> dispatch <| SetCurrentView  Dinners) Transparent White
+                        Button "Dessert" (fun _ -> dispatch <| SetCurrentView  Desserts) Transparent White
                     ]
                 ]
             ]
@@ -150,28 +164,36 @@ let Recipe recipe =
 [<ReactComponent>]
 let Homeview() =
     Html.div [
-        Html.p "Hello"
+        Html.h3 "Velkommen til SLAFS!"
+        Html.text "Et helt greit sted å finne oppskrifter på."
+
     ]
 
 [<ReactComponent>]
 let MealView meal setRecipeView =
     let (state, _) = useStore()
-    Html.div [
-        prop.fss [
-            Display.flex
-            FlexDirection.column
+    match state.Recipes with
+    | Data recipes ->
+        Html.div [
+            prop.fss [
+                Display.flex
+                FlexDirection.column
+            ]
+            prop.children [
+                Html.h1 $"{mealToNorwegian meal} oppskrifter"
+                yield!
+                    recipes
+                    |> List.filter (fun r -> r.Meal = meal)
+                    |> List.map (fun r -> Button r.Title (fun _ -> setRecipeView r) Transparent Black)
+            ]
         ]
-        prop.children [
-            Html.h1 $"{mealToNorwegian meal} oppskrifter"
-            yield!
-                state.Recipes
-                |> List.filter (fun r -> r.Meal = meal)
-                |> List.map (fun r -> Button r.Title (fun _ -> setRecipeView r) Transparent)
-        ]
-    ]
+    | Fetching -> Html.text "Laster oppskrifter..."
+    | Failure e -> Html.text $"En feil har forekommet {e}"
 
 [<ReactComponent>]
 let NewRecipeView () =
+    let (store, dispatch) = useStore()
+
     let (title, setTitle) = React.useState ""
     let (description, setDescription) = React.useState ""
     let (meal, setMeal) = React.useState Breakfast
@@ -199,6 +221,9 @@ let NewRecipeView () =
               requestHeaders [ ContentType "application/json" ]
               RequestProperties.Body (unbox(Encode.Auto.toString(4, recipe, caseStrategy = CamelCase))) ]
         fetch "http://localhost:5000/api/recipe" properties
+        |> Promise.map(fun _ ->
+            dispatch (AddRecipe recipe)
+            dispatch (SetCurrentView (RecipeDetails recipe)))
         |> Promise.start
 
     let Label (text: string) = Html.label [ prop.text text ]
@@ -285,7 +310,7 @@ let NewRecipeView () =
                         prop.onChange (fun s -> setSteps (steps.Add(key, s)))
                     ]))
 
-            Button "Nytt steg" (fun _ -> setSteps (steps.Add(steps.Count, ""))) ButtonColor.Green
+            Button "Nytt steg" (fun _ -> setSteps (steps.Add(steps.Count, ""))) ButtonColor.Green Black
 
 
             FormElement "Ingredienser"
@@ -293,7 +318,7 @@ let NewRecipeView () =
                  |> Map.toList
                  |> List.map (fun (key, value) -> IngredientElement key value))
 
-            Button "Ny ingrediens" (fun _ -> setIngredients ingredients.Count (ingredient 0.0 Kg "")) ButtonColor.Green
+            Button "Ny ingrediens" (fun _ -> setIngredients ingredients.Count (ingredient 0.0 Kg "")) ButtonColor.Green Black
 
             FormElement "Porsjoner" [
                 Html.input [
@@ -302,7 +327,7 @@ let NewRecipeView () =
                 ]
             ]
 
-            Button "Lagre oppskrift" (fun _ -> saveRecipe ()) ButtonColor.Green
+            Button "Lagre oppskrift" (fun _ -> saveRecipe ()) ButtonColor.Green Black
         ]
     ]
 
@@ -330,7 +355,6 @@ let PageView() =
             | Dinners -> MealView Dinner setRecipeView
             | Desserts -> MealView Desert setRecipeView
             | NewRecipe -> NewRecipeView ()
-            | EditRecipe -> Html.h1 "Edit a recipe"
         ]
     ]
 

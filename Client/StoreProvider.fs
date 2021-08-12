@@ -5,22 +5,28 @@ open Feliz
 open Types
 open Shared
 
-type StoreAction =
-    | SetRecipes of Recipe list RemoteData
-    | SetCurrentView of View
-
 type Store =
     { Recipes: Recipe list RemoteData
       View: View }
+type StoreAction =
+    | SetRecipes of Recipe list RemoteData
+    | AddRecipe of Recipe
+    | SetCurrentView of View
+
+let StoreReducer state action =
+    match action with
+    | AddRecipe recipe ->
+        let newRecipes =
+            match state.Recipes with
+            | Data recipes -> Data (recipe :: recipes)
+            | _ -> Data [recipe]
+        { state with Recipes = newRecipes }
+    | SetRecipes recipes -> { state with Recipes = recipes }
+    | SetCurrentView view -> { state with View = view }
 
 let initialStore =
     { Recipes = Fetching
       View = Home }
-
-let StoreReducer state action =
-    match action with
-    | SetRecipes recipes -> { state with Recipes = recipes }
-    | SetCurrentView view -> { state with View = view }
 
 let storeContext = React.createContext()
 
