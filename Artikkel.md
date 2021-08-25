@@ -10,9 +10,11 @@ Det finnes ganske mange av disse faktisk: [SAFE Stack](https://safe-stack.github
 Siden jeg vil holde oppsettet i denne artikkelserien så enkelt som mulig har jeg lagd en minimalistisk stack på egen hånd.
 
 ## Dagens plan
-Målet med denne artikkelen er å vise frem hvor enkelt, morsomt og bra det er å lage frontend applikasjoner med F#.
+Målet med denne artikkelen er å vise frem hvor enkelt, morsomt og bra det er å lage frontend-applikasjoner med F#.
+Denne appen er ikke produksjonsklar og har noen problemer, men jeg håper det er mulig å fokusere på
+hvordan det er å skrive React i F# heller enn noen av feilene med appen. :pray:
 
-For å oppnå dette kommer vi til å se på [Fable](https://fable.io), et verktøy som tillater oss å transpilere F# koden vår over til JavaScript.
+Verktøyet som tillater oss å gjøre dette er [Fable](https://fable.io). Fable tillater oss å transpilere F# koden vår over til JavaScript.
 Siden vi ønsker å bruke F# som en TypeScript erstatning skal vi skrive React med hjelp av [Fable](https://fable.io).
 Vi kommer til å ha typesikker styling ved hjelp av mitt bibliotek [Fss](https://github.com/Bjorn-Strom/FSS).
 Og tilslutt se hvor enkelt det er å dele kode mellom frontend og backend.
@@ -142,28 +144,38 @@ Vi ønsker å holde styr på 2 ting:
 1. Oppskriftene våre
 2: Hvilket view vi er inne på nå
 
-Vi trenger også en måte å endre disse 2 på, så da trenger vi 2 actions.
-Da må vi også ha en *reducer* som håndterer disse og en initial *store*.
+Vi trenger også en måte å endre disse på.
+Så vi trenger *actions*, en *reducer* og en initial *store*.
 
 ```fsharp
 type Store =
     { Recipes: Recipe list RemoteData
       View: View }
 ```
-Her lagrer vi dataen vår, vi ser at det er datatyper vi allerede har definert.
+Datatypen til storen vår. Det er her vi kommer til å lagre all data i appen. Denne bruker oppskrifter vi definerte for lenge siden, men også `RemoteData` og `View` som vi definerte i stad.
 
 ```fsharp
 type StoreAction =
     | SetRecipes of Recipe list RemoteData
+    | AddRecipe of Recipe
     | SetCurrentView of View
 ```
-Actions for å endre disse, de kommer til å ta de samme typene som *parameter*.
+Vår store kommer til å ha 3 actions:
+1. `SetRecipes` som setter oppskrift staten vår. Denne tar inn en liste med `Recipes` inne i en `RemoteData` og lagrer den.
+2. `AddRecipe` tar inn en oppskrift og lagrer den sammen med de andre oppskriftene våre.
+3. `SetCurrentView` som endrer viewet vi ser på.
 
 For å deale med actions trenger vi reduceren.
 Det kommer til å være en funksjon som matcher på de actionene vi har definert
 ```fsharp
 let StoreReducer state action =
     match action with
+    | AddRecipe recipe ->
+        let newRecipes =
+            match state.Recipes with
+            | Data recipes -> Data (recipe :: recipes)
+            | _ -> Data [recipe]
+        { state with Recipes = newRecipes }
     | SetRecipes recipes -> { state with Recipes = recipes }
     | SetCurrentView view -> { state with View = view }
 ```
@@ -210,7 +222,67 @@ La oss koble dette sammen i app så vi kan starte med å skrive litt React!
 ## Slafs!
 La oss starte å implementere `Slafs!`, **den** nye store nettsiden for matoppskrifter!
 
+Okei, nå vet vi hvordan vi lager React-komponenter og vi vet hvordan vi bruker staten vår.
+La oss lage en komponent som bruker `useEffect` til å hente alle oppskriftene våre, lagre den i staten og basert på om dataen kommer inn eller ikke viser enten at det laster, velkomstsiden, eller en feilmelding.
+
+```fsharp
+let Container() =
+    // Hent ut state og dispatch
+    let (state, dispatch) = useStore()
+
+    // Lag useEffect hooken vår
+    React.useEffect((fun () ->
+        // Bruker en F# implementasjon av Fetch APIet
+        fetch "http://localhost:5000/api/recipes" []
+        // Sender den inn i bind så vi får hentet ut response-stringen består av
+        |> Promise.bind (fun result -> result.text())
+        // Sender den stringen videre til en decoder som forsøker å gjøre den om til en liste med oppskrifter
+        |> Promise.map (fun result -> Decode.Auto.fromString<Recipe list>(result, caseStrategy=CamelCase))
+        // Dersom decodingen fungerte så vil vi gjøre den om til en RemoteData
+        |> Promise.map (fun result ->
+            match result with
+            | Ok recipes -> Data recipes
+            | Error e -> Failure e)
+        // Uansett hvilken type RemoteData vi får tilbake så vil vi lagre den i state
+        |> Promise.map (fun r -> dispatch (SetRecipes r))
+        // Så må vi starte promiset
+        |> Promise.start)
+        , [| |])
+```
+
+Der har vi halve komponenten. Denne delen kjører et nettverkskall mot
+localhost og lagrer resultatet i en `RemoteData`.
+Det neste vi trenger er å rendre basert på hva denne dataen er.
+Vi vet at vi kan være i:
+- `Fetching` modus som betyr at vi henter data.
+- `Data` og da har vi data lagret i state
+- `Failure` det skjedde en feil under henting av oppskriftene våre.
+
+Siden vi modellerte dette med en discriminated union kan vi nå matche på alle disse 3 tilfellene.
+Vi legger til dette under promiset vårt:
+```fsharp
+    match state.Recipes with
+    | Fetching -> Html.div [ prop.text "Laster..." ]
+    | Data _ -> PageView()
+    | Failure e -> Html.div [
+        prop.fss [ textFont ]
+        prop.text $"En feil skjedde under henting av oppskrifter: {e}"
+    ]
+```
+
+Her viser vi, en fattig manns spinner, teksten "Laster..." om vi venter på data.
+Dersom vi har data viser vi `PageView` komponenten. Den trenger ingen props og vi forkaster
+dataen vi mottok med `_`. Vi trenger ikke å prop drille denne her når den ligger i state.
+Til slutt dersom vi mottar en feil lagrer vi den i `e` og viser den.
+Enkelt og greit, ikke sant?
+
 ## Why tho?
 - Immutabilitet uten å bruke tredjeparts biblioteker
 - Slipper å tenke like mye på JS, der i de områdene TS feiler
 - Slipper implicit any
+- Veldig sikkert refaktorering
+
+Mye forbedringspotensial her.
+- Nettverkskall kan fort bli gjort litt smoothere.
+- Routing
+- Hadde ikke skadet å gått over stylingen en tur, it's not excactly pretty.

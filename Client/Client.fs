@@ -166,7 +166,6 @@ let Homeview() =
     Html.div [
         Html.h3 "Velkommen til SLAFS!"
         Html.text "Et helt greit sted å finne oppskrifter på."
-
     ]
 
 [<ReactComponent>]
@@ -192,29 +191,25 @@ let MealView meal setRecipeView =
 
 [<ReactComponent>]
 let NewRecipeView () =
-    let (store, dispatch) = useStore()
+    let (_, dispatch) = useStore()
 
     let (title, setTitle) = React.useState ""
     let (description, setDescription) = React.useState ""
     let (meal, setMeal) = React.useState Breakfast
     let (time, setTime) = React.useState 0.
-    let (steps, setSteps) = React.useState<Map<int, string>> Map.empty
-    let (ingredients, setIngredients) = React.useState<Map<int, Ingredient>> Map.empty
+    let (steps, setSteps) = React.useState<string list> List.empty
+    let (ingredients, setIngredients) = React.useState<Ingredient list> List.empty
     let (portions, setPortions) = React.useState 0
 
+    let setSteps key value =
+        setSteps (List.replaceIndex key value steps)
+
     let setIngredients key value =
-        setIngredients (ingredients.Add(key, value))
+        setIngredients (List.replaceIndex key value ingredients)
+
 
     let saveRecipe () =
-        let stepList =
-            steps
-            |> Map.toList
-            |> List.map (fun (_, value) -> value)
-        let ingredientList =
-            ingredients
-            |> Map.toList
-            |> List.map (fun (_, value) -> value)
-        let recipe = createRecipe title description meal time stepList ingredientList portions
+        let recipe = createRecipe title description meal time steps ingredients portions
 
         let properties =
             [ RequestProperties.Method HttpMethod.POST
@@ -303,22 +298,19 @@ let NewRecipeView () =
             ]
             FormElement "Steg"
                 (steps
-                |> Map.toList
-                |> List.map (fun (key, value) ->
+                |> List.mapi (fun key value ->
                     Html.textarea [
                         prop.value value
-                        prop.onChange (fun s -> setSteps (steps.Add(key, s)))
+                        prop.onChange (fun s -> setSteps key s)
                     ]))
 
-            Button "Nytt steg" (fun _ -> setSteps (steps.Add(steps.Count, ""))) ButtonColor.Green Black
-
+            Button "Nytt steg" (fun _ -> setSteps (List.length steps) "") ButtonColor.Green Black
 
             FormElement "Ingredienser"
                 (ingredients
-                 |> Map.toList
-                 |> List.map (fun (key, value) -> IngredientElement key value))
+                 |> List.mapi (fun key value -> IngredientElement key value))
 
-            Button "Ny ingrediens" (fun _ -> setIngredients ingredients.Count (ingredient 0.0 Kg "")) ButtonColor.Green Black
+            Button "Ny ingrediens" (fun _ -> setIngredients (List.length ingredients) (ingredient 0.0 Kg "")) ButtonColor.Green Black
 
             FormElement "Porsjoner" [
                 Html.input [
@@ -336,6 +328,7 @@ let NewRecipeView () =
 let PageView() =
     let (state, dispatch) = useStore()
     let setRecipeView recipe = dispatch (SetCurrentView (RecipeDetails recipe))
+    let MealView meal = MealView meal setRecipeView
     Html.div [
         prop.fss [
             Display.flex
@@ -350,10 +343,10 @@ let PageView() =
             match state.View with
             | Home -> Homeview ()
             | RecipeDetails recipe -> Recipe recipe
-            | Breakfasts -> MealView Breakfast setRecipeView
-            | Lunches -> MealView Lunch setRecipeView
-            | Dinners -> MealView Dinner setRecipeView
-            | Desserts -> MealView Desert setRecipeView
+            | Breakfasts -> MealView Breakfast
+            | Lunches -> MealView Lunch
+            | Dinners -> MealView Dinner
+            | Desserts -> MealView Desert
             | NewRecipe -> NewRecipeView ()
         ]
     ]
