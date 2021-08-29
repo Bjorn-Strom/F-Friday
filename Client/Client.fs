@@ -202,11 +202,18 @@ let NewRecipeView () =
     let (portions, setPortions) = React.useState 0
 
     let setSteps key value =
-        setSteps (List.replaceIndex key value steps)
+        if List.length steps > key then
+            let newList = List.replaceIndex key value steps
+            setSteps newList
+        else
+            setSteps (steps @ [value])
 
     let setIngredients key value =
-        setIngredients (List.replaceIndex key value ingredients)
-
+        if List.length ingredients > key then
+            let newList = List.replaceIndex key value ingredients
+            setIngredients newList
+        else
+            setIngredients (ingredients @ [value])
 
     let saveRecipe () =
         let recipe = createRecipe title description meal time steps ingredients portions
@@ -215,10 +222,19 @@ let NewRecipeView () =
             [ RequestProperties.Method HttpMethod.POST
               requestHeaders [ ContentType "application/json" ]
               RequestProperties.Body (unbox(Encode.Auto.toString(4, recipe, caseStrategy = CamelCase))) ]
+        (*
         fetch "http://localhost:5000/api/recipe" properties
         |> Promise.map(fun _ ->
             dispatch (AddRecipe recipe)
             dispatch (SetCurrentView (RecipeDetails recipe)))
+        |> Promise.start
+        *)
+
+        promise {
+            do fetch "http://localhost:5000/api/recipe" properties |> ignore
+            do dispatch (AddRecipe recipe)
+            do dispatch (SetCurrentView (RecipeDetails recipe))
+        }
         |> Promise.start
 
     let Label (text: string) = Html.label [ prop.text text ]
@@ -329,6 +345,8 @@ let PageView() =
     let (state, dispatch) = useStore()
     let setRecipeView recipe = dispatch (SetCurrentView (RecipeDetails recipe))
     let MealView meal = MealView meal setRecipeView
+
+
     Html.div [
         prop.fss [
             Display.flex
