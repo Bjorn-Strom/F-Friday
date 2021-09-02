@@ -375,7 +375,7 @@ let PageView() =
 let Container() =
     let (state, dispatch) = useStore()
 
-    React.useEffect((fun () ->
+    Hooks.useEffectOnce((fun () ->
         fetch "http://localhost:5000/api/recipes" []
         |> Promise.bind (fun result -> result.text())
         |> Promise.map (fun result -> Decode.Auto.fromString<Recipe list>(result, caseStrategy=CamelCase))
@@ -384,8 +384,7 @@ let Container() =
             | Ok recipes -> Data recipes
             | Error e -> Failure e)
         |> Promise.map (fun r -> dispatch (SetRecipes r))
-        |> Promise.start)
-        , [| |])
+        |> Promise.start))
 
     match state.Recipes with
     | Fetching -> Html.div [ prop.text "Laster..." ]

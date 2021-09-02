@@ -76,14 +76,14 @@ let useEffectOnce callback =
 
 Dette ligner jo også på TypeScript.
 De største forskjellene er:
-- Hook attributten så React vet dette er en hook.
+- At vi trenger en attributt så Feliz vet at dette skal bli til en hook.
 - Vi bruker parantes for tupler.
 - Alle typer i F# er en implementasjon av `obj` typen. Men det finnes ingen implisitt konvertering til dette, da må vi ekspisitt kaste verdiene i dependency lista vår til en `obj` med `:>` operatoren.
 
 
 ## Suit up!
 Stilig, men hva med styling?
-For å være litt shameless kommer jeg til å bruke [mitt eget](https://github.com/Bjorn-Strom/FSS) styling bibliotek, men du kan også bruke inline styles, SASS, LESS, type providers eller gode gamle CSS om du ønsker det.
+For å være litt shameless kommer jeg til å bruke [mitt eget](https://github.com/Bjorn-Strom/FSS) styling bibliotek, men du kan også bruke inline styles, SASS, LESS, type providers eller gode gammel CSS om du ønsker det.
 Fordelen med Fss er typesikkerhet. Programmet ditt kompilerer ikke om du har skrevet stylingen din feil (at det ser bra ut er desverre ingen garanti).
 
 Fss fungerer uavhengig av Feliz, men har også en Feliz plugin for å kunne skrive stylingen direkte i komponenter. Så la oss style eksempelet over litt.
@@ -121,7 +121,7 @@ let Hello() =
 
 Ting å merke seg her:
 - Vi styler conditionally basert på en if setning rett i listen.
-- Det ser likt ut om Css, tanken bak Fss er at om du kan skrive Css kan du også skrive Fss.
+- Det ser likt ut om CSS, tanken bak Fss er at om du kan skrive CSS kan du også skrive Fss.
 - Flere ting?
 
 ## Tilbake til oppskrifter
@@ -189,6 +189,7 @@ type Store =
     { Recipes: Recipe list RemoteData
       View: View }
 ```
+`Recipe list RemoteData` leses forøvrig slik: `RemoteData<list<Recipe>>`. Du kan også skrive typene på denne måten om du vil, da F# godtar begge variantene.
 Som nevnt tidligere lagrer vi oppskriftene og hvilket view vi er inne i.
 Dette bruker oppskrift typen og definerte for lenge siden, sammen med `RemoteData` og `View` som vi definerte i stad.
 
@@ -268,8 +269,8 @@ let Container() =
     // Hent ut state og dispatch
     let (state, dispatch) = useStore()
 
-    // Lag useEffect hooken vår
-    React.useEffect((fun () ->
+    // Bruk useEffectOnce hooken vår
+    Hooks.useEffectOnce((fun () ->
         // Bruker en F# implementasjon av Fetch APIet
         fetch "http://localhost:5000/api/recipes" []
         // Sender den inn i bind så vi får hentet ut response-stringen består av
@@ -284,8 +285,7 @@ let Container() =
         // Uansett hvilken type RemoteData vi får tilbake så vil vi lagre den i state
         |> Promise.map (fun r -> dispatch (SetRecipes r))
         // Så må vi starte promiset
-        |> Promise.start)
-        , [| |])
+        |> Promise.start) )
 ```
 
 Der har vi halve komponenten. Denne delen kjører et nettverkskall mot
@@ -310,7 +310,7 @@ Vi legger til dette under promiset vårt:
 
 Her viser vi, en fattig manns spinner, teksten "Laster..." om vi venter på data.
 Dersom vi har data viser vi `PageView` komponenten. Den trenger ingen props og vi forkaster
-dataen vi mottok med `_`. Vi trenger ikke å prop drille denne her når den ligger i state.
+dataen vi mottok med `_`. Vi trenger ikke å prop drille denne her når den ligger i store.
 Til slutt dersom vi mottar en feil lagrer vi den i `e` og viser den.
 Enkelt og greit, ikke sant?
 
@@ -318,7 +318,7 @@ Enkelt og greit, ikke sant?
 Vi trenger en egen side for å legge til nye oppskrifter.
 Her kommer jeg ikke til å gå igjennom hvordan dette rendres, men mer logikken som tillater oss å endre, poste oppsrifter og oppdatere storen med nye oppskrifter.
 
-Vi lager en state hook for hver del av oppskriften vi vil lagre
+Vi lager en state hook for hver del av oppskriften vi vil lagre.
 Hvis vi tenker tilbake til oppskrift typen så vet vi at vi trenger:
 - En tittel
 - En beskrivelse
@@ -350,7 +350,8 @@ Html.input [
 
 Nå trenger vi en funksjon for å lagre oppskriften.
 Om vi skulle ha gjort dette skikkelig ville vi nok trukket ut all nettverkskode ut i en egen fil og laget en fin abstraksjon rundt dette.
-For å illustrere hvordan man kan utføre nettverkskall er det nok enklere å bare lage en `saveRecipe` funksjon rett i denne komponenten.
+For å illustrere hvordan man kan utføre nettverkskall er det nok enklere å bare lage en closure `saveRecipe` funksjon rett i denne komponenten.
+
 ```FSharp
 let saveRecipe () =
     // Denne funksjonen skrev vi i den andre artikkelen i denne serien. Her har vi flyttet den til Shared.fs
@@ -378,10 +379,10 @@ let saveRecipe () =
 Noe jeg liker med denne stacken er å bruke F# både frontend og backend.
 Heldigvis er dette også veldig enkelt å få til.
 Man har et eget prosjekt i solution hvor man plasserer all kode som man vil skal dele mellom frontend og backend.
-I vårt prosjekt plasserte jeg all oppskrift kode og alle hjelpefunksjoner som trengs i hele stacken.
+I vårt prosjekt plasserte jeg all oppskriftkode og alle hjelpefunksjoner som trengs i hele stacken.
 Når man så importerer koden blir det transpilert til JavaScript med fable i frontenden og kompilert i backenden.
 
-- Da slipper man context switche når man bytter mellom de to
+- Da slipper man å context switche når man bytter mellom de to
 - Trenger ikke gjenta samme kode flere plasser
 - Enklere validering
 - Dele hjelpefunksjoner
@@ -462,10 +463,10 @@ Med F# får du:
 - Immutabilitet uten å bruke tredjeparts biblioteker
 - Slipper å tenke like mye på JS, det er gjerne i det grenselandet TS feiler
 - Du slipper implicit any.
-- Veldig sikkert refaktorering
+- Veldig sikker refaktorering
 - Sterkt statisk typesystem
 
-Da er artikkelen ferdig! Endelig!
+Da har du endelig nådd slutten!
 Så det er en del forbedringspotensial i dette prosjektet:
 - Nettverkskall kan fort bli gjort litt smoothere.
 - Routing er alltid en forbedring
