@@ -122,7 +122,6 @@ let Hello() =
 Ting å merke seg her:
 - Vi styler conditionally basert på en if setning rett i listen.
 - Det ser likt ut om CSS, tanken bak Fss er at om du kan skrive CSS kan du også skrive Fss.
-- Flere ting?
 
 ## Tilbake til oppskrifter
 Nå som vi har litt bakgrunn for hva vi skal gjøre, og hvordan - er det igjen oppskriftene som står for tur.
@@ -462,8 +461,9 @@ Men, jeg vil påstå at F# gjør den samme jobben - bare bedre.
 Med F# får du:
 - Immutabilitet uten å bruke tredjeparts biblioteker
 - Slipper å tenke like mye på JS, det er gjerne i det grenselandet TS feiler
-- Du slipper implicit any.
+- Du slipper implicit any
 - Veldig sikker refaktorering
+- Algebraiske datatyper
 - Sterkt statisk typesystem
 
 Da har du endelig nådd slutten!
