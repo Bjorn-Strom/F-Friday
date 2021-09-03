@@ -4,10 +4,10 @@ Hei og velkommen til den fjerde posten i en serie om programmeringsspråket F#!
 
 [Forrige gang]() laget vi en backend som kunne serve oppskriftene våre. Med den kan vi hente alle, lage nye, oppdatere eller slette oppskrifter. Denne gangen skal vi lage en enkel frontend som kan kommunisere med denne backenden og vise frem de fine oppskriftene våre.
 
-Istedenfor å gå gjennom oppsettet til en server, client og hvordan man deler kode mellom dem så kan man bruke en template.
+I stedet for å gå gjennom oppsettet til en server, client og hvordan man deler kode mellom dem så kan man bruke en template.
 Det finnes ganske mange av disse faktisk: [SAFE Stack](https://safe-stack.github.io), [SAFEr.Template](https://github.com/Dzoukr/SAFEr.Template), [SAFE.Simplified](https://github.com/Zaid-Ajaj/SAFE.Simplified) med flere, men SAFE Stack er den jeg har brukt mest.
 
-Siden jeg vil holde oppsettet i denne artikkelserien så enkelt som mulig har jeg lagd en minimalistisk stack på egen hånd.
+Siden jeg vil holde oppsettet i denne artikkelserien så enkelt som mulig har jeg laget en minimalistisk stack på egen hånd.
 
 ## Dagens plan
 Målet med denne artikkelen er å vise frem hvor enkelt og morsomt det er å lage frontend-applikasjoner med F#.
@@ -23,7 +23,7 @@ en liten tankerekke på hvorfor dette er en interessant stack.
 Frontend er et veeeldig stort tema og det er umulig å dekke alt i én artikkel. Se på denne som en introduksjon til Frontend i F#, så kan det komme flere mer spissede temaer i fremtiden.
 
 I et forsøk på holde denne artikkelen relativt kort dekker jeg ikke all koden som denne frontenden består av. Jeg har prøvd å trekke frem de delene jeg mener er av størst interesse.
-Om du vil ha tilgang til hele kildekoden er den å finne på GitHub.
+Om du vil ha tilgang til hele kildekoden er den å finne på GitHub. (lenke)
 
 
 ## How to React?
@@ -31,7 +31,7 @@ Som nevnt er [Fable](https://fable.io) et bibliotek som lar oss skrive JavaScrip
 Hvis du kombinerer dette med [Feliz](https://github.com/Zaid-Ajaj/Feliz) så kan du skrive React komponenter som vanlig,
 du kan bruke hooks, context, portals, error boundaries, alt som du er kjent med fra "vanlig" React - bare på en immutabel og typesikker måte.
 
-Med Feliz kan du importere JSX om du vil, men biblioteket tilbyr et eget DSL som er mye mer egnet til F# og som fungerer veldig bra.
+Med Feliz kan du importere JSX om du vil, men biblioteket tilbyr et eget DSL (forkortelse for..? Er ikke kjent med dette begrepet) som er mye mer egnet til F# og som fungerer veldig bra.
 Et hello world eksempel:
 ```fsharp
 [<ReactComponent>]
@@ -83,8 +83,8 @@ De største forskjellene er:
 
 ## Suit up!
 Stilig, men hva med styling?
-For å være litt shameless kommer jeg til å bruke [mitt eget](https://github.com/Bjorn-Strom/FSS) styling bibliotek, men du kan også bruke inline styles, SASS, LESS, type providers eller gode gammel CSS om du ønsker det.
-Fordelen med Fss er typesikkerhet. Programmet ditt kompilerer ikke om du har skrevet stylingen din feil (at det ser bra ut er desverre ingen garanti).
+For å være litt shameless kommer jeg til å bruke [mitt eget](https://github.com/Bjorn-Strom/FSS) styling bibliotek, men du kan også bruke inline styles, SASS, LESS, type providers eller god gammel CSS om du ønsker det.
+Fordelen med Fss er typesikkerhet. Programmet ditt kompilerer ikke om du har skrevet stylingen din feil (at det ser bra ut er dessverre ingen garanti).
 
 Fss fungerer uavhengig av Feliz, men har også en Feliz plugin for å kunne skrive stylingen direkte i komponenter. Så la oss style eksempelet over litt.
 ```fsharp
@@ -121,7 +121,7 @@ let Hello() =
 
 Ting å merke seg her:
 - Vi styler conditionally basert på en if setning rett i listen.
-- Det ser likt ut om CSS, tanken bak Fss er at om du kan skrive CSS kan du også skrive Fss.
+- Det ser likt ut som CSS, tanken bak Fss er at om du kan skrive CSS kan du også skrive Fss.
 
 ## Tilbake til oppskrifter
 Nå som vi har litt bakgrunn for hva vi skal gjøre, og hvordan - er det igjen oppskriftene som står for tur.
@@ -136,8 +136,8 @@ Teknisk tenker jeg noe slik:
 - På page load lastes alle oppskrifter og vi lagrer dem i en context.
 - Noe annet vi lagrer i contexten er hvilken side vi ser på.
 - Basert på hvilken side vi ser på endrer vi hva som rendres. Her ville vi nok helst brukt routing, men det skipper vi i dag.
-- Vi har en egen side for man kan lage nye oppskrifter og sende dem til backend.
-- Når vi oppretter en ny oppskrift blir vi videresendt til dens side.
+- Vi har en egen side for å lage nye oppskrifter og sende dem til backend.
+- Når vi oppretter en ny oppskrift blir vi videresendt til oppskriftens side.
 ## Typer
 Som alltid starter vi med å lage noen typer. Vi vet allerede at vi trenger typer for *viewet* vårt.
 De kan se slik ut:
@@ -151,7 +151,7 @@ type View =
     | Desserts
     | NewRecipe
 ```
-Som vi husker fra før kan en slik datatype bli sett på som en *eller* type.
+Som vi husker fra før kan en slik datatype bli sett på som en *eller*-type.
 Så denne typen definerer ett view i appen vår.
 Vi ser også at `RecipeDetails` er det eneste viewet som har en verdi knyttet til seg.
 I dette tilfellet er den verdien en oppskrift som vi har definert før.
@@ -165,7 +165,7 @@ type RemoteData<'t> =
     | Data of 't
     | Failure of string
 ```
-Atter en *eller* type. Her ser vi at dataen vår kan enten:
+Atter en *eller*-type. Her ser vi at dataen vår kan enten:
 være i ferd med å lastes, være lastet, eller det kan ha forekommet en feil.
 Dette er noe vi enkelt kan skjekke i applikajonskoden vår.
 
@@ -199,7 +199,7 @@ type StoreAction =
     | AddRecipe of Recipe
     | SetCurrentView of View
 ```
-1. `SetRecipes` som setter oppskrift staten vår. Denne tar inn en liste med `Recipes` inne i en `RemoteData` og lagrer den.
+1. `SetRecipes` som setter oppskrifter i staten vår. Denne tar inn en liste med `Recipes` inne i en `RemoteData` og lagrer den.
 2. `AddRecipe` tar inn en oppskrift og lagrer den sammen med de andre oppskriftene våre.
 3. `SetCurrentView` som endrer viewet vi ser på.
 
@@ -436,7 +436,7 @@ fetch "http://localhost:5000/api/recipe" properties
 ```
 Hvor `Promise.map` kan sees på som F# sin verson av `.then` (dette er ikke strengt tatt riktig, men jeg føler det er en fin måte å tenke på dette når man først starter med F#)
 
-I tillegg finnes det en annen syntax for dette i F# som heter (computation expressions)[https://fsharpforfunandprofit.com/series/computation-expressions/] som man kan tenke på som en async funksjon i JavaScript (Igjen, ikke helt riktig, men nyttig sted å starte).
+I tillegg finnes det en annen syntax for dette i F# som heter [computation expressions](https://fsharpforfunandprofit.com/series/computation-expressions/) som man kan tenke på som en async funksjon i JavaScript (igjen, ikke helt riktig, men nyttig sted å starte).
 
 I F# vil man kunne skrevet det tilsvarende slik:
 ```fsharp
@@ -455,7 +455,7 @@ Den største forskjellen, sett bort fra syntax, er at du i F# eksplisitt må sta
 
 ## Why tho?
 Oookei, men hvorfor kan jeg ikke bare bruke TypeScript?
-Vell, det kan du jo selvfølgelig gjøre!
+Vel, det kan du jo selvfølgelig gjøre!
 
 Men, jeg vil påstå at F# gjør den samme jobben - bare bedre.
 Med F# får du:
@@ -473,6 +473,11 @@ Så det er en del forbedringspotensial i dette prosjektet:
 - Hadde ikke skadet å gått over stylingen en tur, siden er ikke akkurat pen!
 - Vi kan ikke slette eller oppdatere oppskrifter.
 
-Om du har lyst til å se appen kan du se den her, selve koden finner du her.
+Om du har lyst til å se appen kan du se den [her](link), selve koden finner du [her]().
 
 Sees neste gang, da blir det databaser!
+
+Lenker til tidligere artikler:
+1)...
+2)...
+3)...
