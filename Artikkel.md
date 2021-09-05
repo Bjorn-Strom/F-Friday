@@ -23,7 +23,7 @@ en liten tankerekke på hvorfor dette er en interessant stack.
 Frontend er et veeeldig stort tema og det er umulig å dekke alt i én artikkel. Se på denne som en introduksjon til Frontend i F#, så kan det komme flere mer spissede temaer i fremtiden.
 
 I et forsøk på holde denne artikkelen relativt kort dekker jeg ikke all koden som denne frontenden består av. Jeg har prøvd å trekke frem de delene jeg mener er av størst interesse.
-Om du vil ha tilgang til hele kildekoden er den å finne på GitHub. (lenke)
+Om du vil ha tilgang til hele kildekoden er den å finne på [GitHub](https://github.com/Bjorn-Strom/F-Friday/tree/4-frontend)
 
 
 ## How to React?
@@ -31,7 +31,7 @@ Som nevnt er [Fable](https://fable.io) et bibliotek som lar oss skrive JavaScrip
 Hvis du kombinerer dette med [Feliz](https://github.com/Zaid-Ajaj/Feliz) så kan du skrive React komponenter som vanlig,
 du kan bruke hooks, context, portals, error boundaries, alt som du er kjent med fra "vanlig" React - bare på en immutabel og typesikker måte.
 
-Med Feliz kan du importere JSX om du vil, men biblioteket tilbyr et eget DSL (forkortelse for..? Er ikke kjent med dette begrepet) som er mye mer egnet til F# og som fungerer veldig bra.
+Med Feliz kan du importere JSX om du vil, men biblioteket tilbyr et eget DSL, domain specific language, som er mye mer egnet til F# og som fungerer veldig bra.
 Et hello world eksempel:
 ```fsharp
 [<ReactComponent>]
@@ -473,11 +473,12 @@ Så det er en del forbedringspotensial i dette prosjektet:
 - Hadde ikke skadet å gått over stylingen en tur, siden er ikke akkurat pen!
 - Vi kan ikke slette eller oppdatere oppskrifter.
 
-Om du har lyst til å se appen kan du se den [her](link), selve koden finner du [her]().
+Om du har lyst til å se appen kan du se den [her](http://slafs.herokuapp.com/), selve koden finner du [her](https://github.com/Bjorn-Strom/F-Friday/tree/4-frontend).
 
 Sees neste gang, da blir det databaser!
 
 Lenker til tidligere artikler:
-1)...
-2)...
-3)...
+- Del 1: [Introduksjon](https://blogg.bekk.no/f-friday-1-39f63618d2e4)
+- Del 2: [Typesystemet](https://blogg.bekk.no/f-friday-2-typesystemet-3e7ee0554f0e)
+- Del 3: [Backenden](https://blogg.bekk.no/f-friday-3-backend-7463edf0f94a)
+- **Del 4: Frontend og React**
