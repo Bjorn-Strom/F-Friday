@@ -223,7 +223,7 @@ let NewRecipeView () =
               requestHeaders [ ContentType "application/json" ]
               RequestProperties.Body (unbox(Encode.Auto.toString(4, recipe, caseStrategy = CamelCase))) ]
         (*
-        fetch "http://localhost:5000/api/recipe" properties
+        fetch "http://0.0.0.0:80/api/recipe" properties
         |> Promise.map(fun _ ->
             dispatch (AddRecipe recipe)
             dispatch (SetCurrentView (RecipeDetails recipe)))
@@ -231,7 +231,7 @@ let NewRecipeView () =
         *)
 
         promise {
-            do fetch "http://localhost:5000/api/recipe" properties |> ignore
+            do fetch "http://0.0.0.0:80/api/recipe" properties |> ignore
             do dispatch (AddRecipe recipe)
             do dispatch (SetCurrentView (RecipeDetails recipe))
         }
@@ -376,7 +376,7 @@ let Container() =
     let (state, dispatch) = useStore()
 
     Hooks.useEffectOnce((fun () ->
-        fetch "http://localhost:5000/api/recipes" []
+        fetch "http://slafs.herokuapp.com/api/recipes" []
         |> Promise.bind (fun result -> result.text())
         |> Promise.map (fun result -> Decode.Auto.fromString<Recipe list>(result, caseStrategy=CamelCase))
         |> Promise.map (fun result ->

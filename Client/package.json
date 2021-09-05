@@ -1,15 +1,9 @@
 {
-  "name": "client",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
   "scripts": {
     "start": "dotnet fable watch . -o ./public --run parcel serve public/index.html",
     "build": "dotnet fable . -o ./public --run parcel build public/index.html",
     "clean": "rm -rf dist && rm -rf public/*.js public/shared public/.fable"
   },
-  "author": "",
-  "license": "ISC",
   "devDependencies": {
     "parcel": "^2.0.0-beta.3.1"
   },

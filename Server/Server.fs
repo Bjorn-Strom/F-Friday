@@ -12,7 +12,7 @@ open Thoth.Json.Net
 
 
 let routes =
-    choose [ GET    >=> route  "/api/recipes"    >=> getRecipes 
+    choose [ GET    >=> route  "/api/recipes"    >=> getRecipes
              POST   >=> route  "/api/recipe"     >=> postRecipe
              PUT    >=> route  "/api/recipe"     >=> putRecipe
              DELETE >=> routef "/api/recipe/%O" deleteRecipe
@@ -26,12 +26,17 @@ let configureCors (builder: CorsPolicyBuilder) =
 
 let configureApp (app : IApplicationBuilder) =
     app.UseCors(configureCors)
+       .UseDefaultFiles()
+       .UseStaticFiles()
        .UseGiraffe routes
 
 let configureServices (services : IServiceCollection) =
     services.AddCors() |> ignore
     services.AddGiraffe() |> ignore
     services.AddSingleton<Json.ISerializer> (Thoth.Json.Giraffe.ThothSerializer (caseStrategy = CamelCase)) |> ignore
+
+let tryGetEnv = Environment.GetEnvironmentVariable >> function null | "" -> None | x -> Some x
+let port = "PORT" |> tryGetEnv |> Option.map uint16 |> Option.defaultValue 80us
 
 [<EntryPoint>]
 let main args =
@@ -41,6 +46,7 @@ let main args =
                 webHostBuilder
                     .Configure(Action<IApplicationBuilder> configureApp)
                     .ConfigureServices(configureServices)
+                    .UseUrls("http://0.0.0.0:" + port.ToString() + "/")
                     |> ignore)
         .Build()
         .Run()
