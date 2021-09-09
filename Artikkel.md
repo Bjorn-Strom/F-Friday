@@ -2,6 +2,12 @@
 
 Hei og velkommen til den tredje posten i en serie om programmeringsspråket F#!
 
+Lenker til tidligere artikler:
+- Del 1: [Introduksjon](https://blogg.bekk.no/f-friday-1-39f63618d2e4)
+- Del 2: [Typesystemet](https://blogg.bekk.no/f-friday-2-typesystemet-3e7ee0554f0e)
+- **Del 3: Backenden**
+- Del 4: [Frontend og React](https://blogg.bekk.no/f-friday-4-frontend-og-react-c356d34a6095)
+
 [Forrige gang]() startet vi å definere typene vår lille matoppskrifts-app skal bestå av. Vi lagde også noen enkle hjelpefunksjoner som lar oss opprette oppskrifter. Denne gangen skal vi putte denne koden inn i en backend, slik at vi kan utføre CRUD operasjoner på og med oppskriftene våre.
 
 ## Dagens agenda 📋
@@ -104,7 +110,7 @@ For å få til dette så trenger vi disse metodene: `GET`, `POST`, `PUT` og `DEL
 
 ```fsharp
 let routes =
-    choose [ GET    >=> route  "/api/recipes"    >=> getRecipes 
+    choose [ GET    >=> route  "/api/recipes"    >=> getRecipes
              POST   >=> route  "/api/recipe"     >=> postRecipe
              PUT    >=> route  "/api/recipe"     >=> putRecipe
              DELETE >=> routef "/api/recipe/%O" deleteRecipe
