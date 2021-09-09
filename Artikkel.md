@@ -1,192 +1,420 @@
-# F# Friday 3
+# F# Friday 4
 
-Hei og velkommen til den tredje posten i en serie om programmeringsspråket F#!
+Hei og velkommen til den fjerde posten i en serie om programmeringsspråket F#!
 
-[Forrige gang]() startet vi å definere typene vår lille matoppskrifts-app skal bestå av. Vi lagde også noen enkle hjelpefunksjoner som lar oss opprette oppskrifter. Denne gangen skal vi putte denne koden inn i en backend, slik at vi kan utføre CRUD operasjoner på og med oppskriftene våre.
+Lenker til tidligere artikler:
+- Del 1: [Introduksjon](https://blogg.bekk.no/f-friday-1-39f63618d2e4)
+- Del 2: [Typesystemet](https://blogg.bekk.no/f-friday-2-typesystemet-3e7ee0554f0e)
+- Del 3: [Backenden](https://blogg.bekk.no/f-friday-3-backend-7463edf0f94a)
+- **Del 4: Frontend og React**
 
-## Dagens agenda 📋
+[Forrige gang](https://blogg.bekk.no/f-friday-3-backend-7463edf0f94a) laget vi en backend som kunne serve oppskriftene våre. Med den kan vi hente alle, lage nye, oppdatere eller slette oppskrifter. Denne gangen skal vi lage en enkel frontend som kan kommunisere med denne backenden og vise frem de fine oppskriftene våre.
 
-Denne gangen skal vi se på hvordan man kan strukturere en server i F#. Her finnes det ganske mange forskjellige biblioteker som alle har sine egne filosofier og egne måter å gjøre ting på. Samtidig så håndterer de fleste HTTP-requests på en ganske så lik måte. Så kunnskap er ganske overførbar mellom disse forskjellige alternativene. Vi skal se på en som er ganske populær: nemlig [Giraffe](https://github.com/giraffe-fsharp/Giraffe), men aller først må vi en tur innom fugleriket.
+I stedet for å gå gjennom oppsettet til en server, client og hvordan man deler kode mellom dem så kan man bruke en template.
+Det finnes ganske mange av disse faktisk: [SAFE Stack](https://safe-stack.github.io), [SAFEr.Template](https://github.com/Dzoukr/SAFEr.Template), [SAFE.Simplified](https://github.com/Zaid-Ajaj/SAFE.Simplified) med flere, men SAFE Stack er den jeg har brukt mest.
 
-## Kestrel 🐦
-Dersom man har jobbet litt i Dotnet-verden fra før kjenner man antageligvis igjen navnet [Kestrel](https://docs.microsoft.com/en-us/aspnet/core/fundamentals/servers/kestrel?view=aspnetcore-5.0). Det er web server implementasjonen som er standard i ASP.NET Core. Giraffe biblioteket er en funksjonell wrapper på Kestrel for å forenkle dens bruk i F#.
+Siden jeg vil holde oppsettet i denne artikkelserien så enkelt som mulig har jeg laget en minimalistisk stack på egen hånd.
 
-Giraffe lar deg konfigurere både app og services som du kanskje kjenner igjen fra C#, samtidig som den lar deg jobbe med routes på en enkel måte. Den største forskjellen er nok at de har kvittet seg med den objekt- og dependency injection orienterte måten å gjøre ting på. Nå trenger man kun å forholde seg til enkle funksjoner og funksjonskomposisjon.
+## Dagens plan
+Målet med denne artikkelen er å vise frem hvor enkelt og morsomt det er å lage frontend-applikasjoner med F#.
+Den endelige appen vi lager her er ikke produksjonsklar og har noen problemer, men jeg håper det er mulig å fokusere på
+hvordan det er å skrive React i F# heller enn forbedringspotensialet.
 
-I Giraffe fungerer routing slik at du har funksjoner for hver HTTP metode. Disse funksjonene kan du bruke med funksjonskomposisjon for å definere hva som skal skje for hver av disse rutene. For eksempel:
+Det viktigste verktøyet i denne stacken er [Fable](https://fable.io). Fable tillater oss å transpilere F# koden vår over til JavaScript.
+Dette trenger vi da vi ønsker å bruke F# som en TypeScript erstatning.
+Vi kommer også til å ha typesikker styling ved hjelp av mitt bibliotek [Fss](https://github.com/Bjorn-Strom/FSS).
+Til slutt skal vi se hvor enkelt det er å dele kode mellom frontend og backend, se litt ekstra på promises og avslutte med
+en liten tankerekke på hvorfor dette er en interessant stack.
 
+Frontend er et veeeldig stort tema og det er umulig å dekke alt i én artikkel. Se på denne som en introduksjon til Frontend i F#, så kan det komme flere mer spissede temaer i fremtiden.
+
+I et forsøk på holde denne artikkelen relativt kort dekker jeg ikke all koden som denne frontenden består av. Jeg har prøvd å trekke frem de delene jeg mener er av størst interesse.
+Om du vil ha tilgang til hele kildekoden er den å finne på [GitHub](https://github.com/Bjorn-Strom/F-Friday/tree/4-frontend)
+
+
+## How to React?
+Som nevnt er [Fable](https://fable.io) et bibliotek som lar oss skrive JavaScript i F#.
+Hvis du kombinerer dette med [Feliz](https://github.com/Zaid-Ajaj/Feliz) så kan du skrive React komponenter som vanlig,
+du kan bruke hooks, context, portals, error boundaries, alt som du er kjent med fra "vanlig" React - bare på en immutabel og typesikker måte.
+
+Med Feliz kan du importere JSX om du vil, men biblioteket tilbyr et eget DSL, domain specific language, som er mye mer egnet til F# og som fungerer veldig bra.
+Et hello world eksempel:
 ```fsharp
-let ruter =
-    choose
-        [ POST >=> choose [ route "/login" >=> loginHandler
-                            route "/logout" >=> logoutHandler
-                          ]
-          GET >=> choose [ route "/ping"  >=> text "pong"
-                           route "/userInfo" >=> userInfoHandler
-                         ]
+[<ReactComponent>]
+let Hello() =
+    let (name, setName) = React.useState("World!")
+    Html.div [
+        Html.input [
+            prop.value name
+            prop.onChange (fun e -> setName(e.value))
         ]
+
+        Html.p $"Hello {name}"
+    ]
 ```
 
-Det første man nok legger merke til her er den underlige operatoren: >=>. Operatoren er shorthand for funksjonen composeog kan tenkes på som en annen måte å komponere sammen funksjoner på. Den kalles for en fishbone operator og utfører kleisli-komposisjon, du kan lese mer i [denne](https://functional.christmas/2019/14) artikkelen, men det er ikke nødvendig for å følge med videre her.
+Systemet er nokså enkelt: `Html.` etterfulgt av hvilket Html element du ønsker deg.
+Dette er bare funksjoner så du får automatisk IDE hjelp samtidig som du slipper å rote med start og slutt tags.
 
-I eksempelet over har vi definert 4 ruter i en liste. Vi ser at vi har 2 POST endepunkt hvor man kan velge mellom 2 ruter, login og logout. Dersom ruten matcher en av disse så utføres den tilsvarende funksjonen. Så en POST request til ruten `/login` kaller funksjonen `loginHandler`.
+`[<ReactComponent>]` er en attributt som forteller Feliz og Fable at dette skal være en react komponent. Dette gjør at du kan definere funksjonen som du vil og bibliotekene vil ta seg av evt optimaliseringer.
 
-Det er ganske enkelt og det er veldig fort gjort å sette opp nye ruter. Giraffe har også noen innebygde funksjoner som gjør det enklere å returnere tekst eller json direkte. Dette ser vi i `ping` endepunktet.
+### Hook, line, and sinker
 
-Dette er også veldig enkelt å bygge videre på. La oss si at `Get "/userInfo"` ruten trenger autorisering. Da kan du lage en funksjon som tar seg av det og den kobles rett inn i komposisjonen:
+Noe annet vi ofte gjør i React er å skrive egne hooks.
+Hvordan gjør man så dette i F#?
+
+Det er egentlig ganske enkelt. Vi bruker `[<Hook>]` attributten.
+Som et eksempel skal vi implementere en hook en kollega introduserte meg for, og
+som du kan lese mer om [her](https://blogg.bekk.no/kaptein-krok-%EF%B8%8F-useeffectonce-ea28aacd6919).
+`useEffectOnce` er en hook som kun skal kjøres én gang.
 
 ```fsharp
-route "/userInfo" >=> mustBeLoggedIn >=> userInfoHandler
+[<Hook>]
+let useEffectOnce callback =
+    let (hasRun, setHasRun) = React.useState(false)
+
+    React.useEffect((fun () ->
+       if not hasRun then
+           callback()
+           setHasRun(true)
+    ), [| hasRun :> obj; callback :> obj |])
 ```
 
-## Giraffe setup 🦒
-Okei nok teori. Learn by doing, I say!
+Dette ligner jo også på TypeScript.
+De største forskjellene er:
+- At vi trenger en attributt så Feliz vet at dette skal bli til en hook.
+- Vi bruker parantes for tupler.
+- Alle typer i F# er en implementasjon av `obj` typen. Men det finnes ingen implisitt konvertering til dette, da må vi ekspisitt kaste verdiene i dependency lista vår til en `obj` med `:>` operatoren.
 
-Forhåpentligvis har du allerede et prosjekt liggende fra forrige artikkel for nå trenger vi å hente ned Giraffe nuget pakken. I skrivende stund er nyeste versjon 5.0.0, så skriv dette i en terminal i prosjektet ditt:
+
+## Suit up!
+Stilig, men hva med styling?
+For å være litt shameless kommer jeg til å bruke [mitt eget](https://github.com/Bjorn-Strom/FSS) styling bibliotek, men du kan også bruke inline styles, SASS, LESS, type providers eller god gammel CSS om du ønsker det.
+Fordelen med Fss er typesikkerhet. Programmet ditt kompilerer ikke om du har skrevet stylingen din feil (at det ser bra ut er dessverre ingen garanti).
+
+Fss fungerer uavhengig av Feliz, men har også en Feliz plugin for å kunne skrive stylingen direkte i komponenter. Så la oss style eksempelet over litt.
+```fsharp
+[<ReactComponent>]
+let Hello() =
+    let (name, setName) = React.useState("World!")
+    Html.div [
+        Html.input [
+            prop.value name
+            prop.onChange (fun e -> setName(e.value))
+            prop.fss [
+                BackgroundColor.gainsboro
+                Width' (px 150)
+                Height' (px 20)
+                FontSize' (px 17)
+            ]
+        ]
+
+        Html.p [
+            prop.text $"Hello {name}"
+            prop.fss [
+                FontSize' (px 17)
+                if name = "world" then
+                    Color.green
+                else
+                    Color.blue
+                Hover [
+                    FontWeight.bold
+                ]
+            ]
+        ]
+    ]
+```
+
+Ting å merke seg her:
+- Vi styler conditionally basert på en if setning rett i listen.
+- Det ser likt ut som CSS, tanken bak Fss er at om du kan skrive CSS kan du også skrive Fss.
+
+## Tilbake til oppskrifter
+Nå som vi har litt bakgrunn for hva vi skal gjøre, og hvordan - er det igjen oppskriftene som står for tur.
+La oss planlegge litt hvordan denne siden skal se ut og hvordan den skal fungere.
+
+Vi delte oppskriftene inn i gruppene *frokost*, *lunsj*, *middag* og *dessert*. Så hver av disse burde ha sin egen side hvor man kan se alle oppskriftene innenfor en enkelt gruppe.
+Fra den siden kan man klikke seg inn på en enkelt oppskrift for å se ingrediensene og steg.
+Vi trenger også en side for å legge til nye oppskrifter.
+Til slutt burde vi også legge inn en velkomstside, så brukerne våre føler seg velkommen.
+
+Teknisk tenker jeg noe slik:
+- På page load lastes alle oppskrifter og vi lagrer dem i en context.
+- Noe annet vi lagrer i contexten er hvilken side vi ser på.
+- Basert på hvilken side vi ser på endrer vi hva som rendres. Her ville vi nok helst brukt routing, men det skipper vi i dag.
+- Vi har en egen side for å lage nye oppskrifter og sende dem til backend.
+- Når vi oppretter en ny oppskrift blir vi videresendt til oppskriftens side.
+## Typer
+Som alltid starter vi med å lage noen typer. Vi vet allerede at vi trenger typer for *viewet* vårt.
+De kan se slik ut:
+```fsharp
+type View =
+    | Home
+    | RecipeDetails of Recipe
+    | Breakfasts
+    | Lunches
+    | Dinners
+    | Desserts
+    | NewRecipe
+```
+Som vi husker fra før kan en slik datatype bli sett på som en *eller*-type.
+Så denne typen definerer ett view i appen vår.
+Vi ser også at `RecipeDetails` er det eneste viewet som har en verdi knyttet til seg.
+I dette tilfellet er den verdien en oppskrift som vi har definert før.
+
+En annen type vi skal definere gjør det lettvint å holde på med ekstern data. Denne kaller vi for `RemoteData` og den sier noe om statusen på dataen vi har i applikasjonen vår. Denne dataen kan holde på å bli lastet, være hentet eller det har kunne forekommet en feil.
+
+Vi kan definere denne slik:
+```fsharp
+type RemoteData<'t> =
+    | Fetching
+    | Data of 't
+    | Failure of string
+```
+Atter en *eller*-type. Her ser vi at dataen vår kan enten:
+være i ferd med å lastes, være lastet, eller det kan ha forekommet en feil.
+Dette er noe vi enkelt kan skjekke i applikajonskoden vår.
+
+Legg merke til at vi tar inn en generisk type `t` her som definerer hvilken type dataen vi henter har.
+Den kan være hvilken som helst datatype, alt fra string, ints, objekter eller lister av disse.
+
+## Lagring av data
+Før vi går videre kan vi også sette opp *storen* vår.
+
+Vi ønsker å holde styr på 2 ting:
+1. Oppskriftene våre
+2. Hvilket view vi er inne på nå
+
+Vi trenger også en måte å endre disse på.
+Så vi trenger *actions*, en *reducer* og en initial *store*.
+
+La oss starte med å definere datatypen til storen:
+```fsharp
+type Store =
+    { Recipes: RemoteData<Recipe list>
+      View: View }
+```
+`RemoteData<Recipe list>` leses forøvrig slik: `RemoteData<list<Recipe>>`. Du kan også skrive typene på denne måten om du vil, da F# godtar begge variantene.
+Som nevnt tidligere lagrer vi oppskriftene og hvilket view vi er inne i.
+Dette bruker oppskrift typen og definerte for lenge siden, sammen med `RemoteData` og `View` som vi definerte i stad.
+
+Vår store kommer til å ha 3 actions:
+```fsharp
+type StoreAction =
+    | SetRecipes of Recipe list RemoteData
+    | AddRecipe of Recipe
+    | SetCurrentView of View
+```
+1. `SetRecipes` som setter oppskrifter i staten vår. Denne tar inn en liste med `Recipes` inne i en `RemoteData` og lagrer den.
+2. `AddRecipe` tar inn en oppskrift og lagrer den sammen med de andre oppskriftene våre.
+3. `SetCurrentView` som endrer viewet vi ser på.
+
+For å deale med actions trenger vi reduceren.
+Det kommer til å være en funksjon som matcher på de actionene vi har definert
+```fsharp
+let StoreReducer state action =
+    match action with
+    | AddRecipe recipe ->
+        let newRecipes =
+            match state.Recipes with
+            | Data recipes -> Data (recipe :: recipes)
+            | _ -> Data [recipe]
+        { state with Recipes = newRecipes }
+    | SetRecipes recipes -> { state with Recipes = recipes }
+    | SetCurrentView view -> { state with View = view }
+```
+Her har vi en ny type syntaks, nemlig {state with Recipes = newRecipes}. Dette er en måte å opprette en kopi av en eksisterende record på, og samtidig bytte ut noen av feltene i den. I vårt tilfelle vil vi bytte ut feltet Recipes. Selv om det ikke er det samme kan det nesten tenkes litt på som en spread operator fra JavaScript {…state, Recipes: recipes}.
+
+Deretter oppretter vi vår initial store:
+```fsharp
+let initialStore =
+    { Recipes = Fetching
+      View = Home }
+```
+Siden det første vi ønsker å gjøre er å hente inn data kan vi sette oppskriftene til fetching med en gang.
+Vi ønsker at brukeren blir vist forsiden til å starte med og den kalte vi `Home`.
+
+Det å lage contexter er veldig enkelt, vi bruker funksjonen `createContext`:
+```fsharp
+let storeContext = React.createContext()
+```
+
+Vi trenger også en provider vi kan koble sammen med `app` komponenten vår så hele appen vår får tilgang til storen.
+```fsharp
+[<ReactComponent>]
+let StoreProvider children =
+    let (state, dispatch) = React.useReducer(StoreReducer, initialStore)
+    React.contextProvider(storeContext, (state, dispatch), React.fragment [children])
+```
+Denne komponenten tar inn et barn, som for oss kommer til å være hele appen, og wrapper den med en provider.
+
+Det aller siste vi trenger er en hook så vi får hente ut storen og en funksjon så vi kan dispatche til den.
+```fsharp
+[<Hook>]
+let useStore() =
+    React.useContext(storeContext)
+```
+
+Veldig mye greier...
+Men nå har vi en store vi kan bruke slik:
+```fsharp
+let (store, dispatch) = useStore()
+```
+Hvor `store` er et objekt som er vår nåværende store og `dispatch` en funksjon som lar oss utføre actions.
+
+La oss koble dette sammen til en app!
+
+## Slafs!
+La oss starte å implementere `Slafs!`, **den** nye store nettsiden for matoppskrifter!
+
+Okei, nå vet vi hvordan vi lager React-komponenter og vi vet hvordan vi bruker staten vår.
+La oss lage en komponent som bruker `useEffect` til å hente alle oppskriftene våre og lagre dem i staten vår.
 
 ```fsharp
-dotnet add package Giraffe - version 5.0.0
+let Container() =
+    // Hent ut state og dispatch
+    let (state, dispatch) = useStore()
+
+    // Bruk useEffectOnce hooken vår
+    Hooks.useEffectOnce((fun () ->
+        // Bruker en F# implementasjon av Fetch APIet
+        fetch "http://localhost:5000/api/recipes" []
+        // Sender den inn i bind så vi får hentet ut response-stringen består av
+        |> Promise.bind (fun result -> result.text())
+        // Sender den stringen videre til en decoder som forsøker å gjøre den om til en liste med oppskrifter
+        |> Promise.map (fun result -> Decode.Auto.fromString<Recipe list>(result, caseStrategy=CamelCase))
+        // Dersom decodingen fungerte så vil vi gjøre den om til en RemoteData
+        |> Promise.map (fun result ->
+            match result with
+            | Ok recipes -> Data recipes
+            | Error e -> Failure e)
+        // Uansett hvilken type RemoteData vi får tilbake så vil vi lagre den i state
+        |> Promise.map (fun r -> dispatch (SetRecipes r))
+        // Så må vi starte promiset
+        |> Promise.start) )
 ```
 
-Med Giraffe installert så kan vi sette opp en helt enkel backend. La oss starte med å definere en testrute så vi kan sjekke at alt funker:
+Der har vi halve komponenten. Denne delen kjører et nettverkskall mot
+localhost og lagrer resultatet i en `RemoteData`.
+Det neste vi trenger er å rendre basert på hva denne dataen er.
+Vi vet at vi kan være i:
+- `Fetching` modus som betyr at vi henter data.
+- `Data` og da har vi data lagret i state
+- `Failure` det skjedde en feil under henting av oppskriftene våre.
+
+Siden vi modellerte dette med en discriminated union kan vi nå matche på alle disse 3 tilfellene.
+Vi legger til dette under promiset vårt:
 ```fsharp
-let routes = choose [ route "/ping" >=> text "pong"]
+    match state.Recipes with
+    | Fetching -> Html.div [ prop.text "Laster..." ]
+    | Data _ -> PageView()
+    | Failure e -> Html.div [
+        prop.fss [ textFont ]
+        prop.text $"En feil skjedde under henting av oppskrifter: {e}"
+    ]
 ```
 
-Dersom du ikke spesifiserer en spesifikk HTTP metode så vil den funke på alle.
+Her viser vi, en fattig manns spinner, teksten "Laster..." om vi venter på data.
+Dersom vi har data viser vi `PageView` komponenten. Den trenger ingen props og vi forkaster
+dataen vi mottok med `_`. Vi trenger ikke å prop drille denne her når den ligger i store.
+Til slutt dersom vi mottar en feil lagrer vi den i `e` og viser den.
+Enkelt og greit, ikke sant?
 
-Vi trenger noen funksjoner for å sette opp Giraffe også.
+### Nye oppskrifter
+Vi trenger en egen side for å legge til nye oppskrifter.
+Her kommer jeg ikke til å gå igjennom hvordan dette rendres, men mer logikken som tillater oss å endre, poste oppsrifter og oppdatere storen med nye oppskrifter.
 
+Vi lager en state hook for hver del av oppskriften vi vil lagre.
+Hvis vi tenker tilbake til oppskrift typen så vet vi at vi trenger:
+- En tittel
+- En beskrivelse
+- Hvilket måltid det er
+- Hvor lang tid måltidet tar å tilberede
+- En liste med steg
+- En liste med ingredienser
+- Antall porsjoner måltidet består av
 ```fsharp
-let configureApp (app: IApplicationBuilder) =
-    app.UseGiraffe routes
-let configureServices (services: IServiceCollection) =
-    services.AddGiraffe() |> ignore
+let NewRecipeView () =
+    let (_, dispatch) = useStore()
+
+    let (title, setTitle) = React.useState ""
+    let (description, setDescription) = React.useState ""
+    let (meal, setMeal) = React.useState Breakfast
+    let (time, setTime) = React.useState 0.
+    let (steps, setSteps) = React.useState<string list> List.empty
+    let (ingredients, setIngredients) = React.useState<Ingredient list> List.empty
+    let (portions, setPortions) = React.useState 0
 ```
 
-Disse funksjonene vil tilsvare det du finner i en typisk `startup.cs` fil i et C# backend prosjekt, så om du ønsker å legge til CORS eller andre ting er dette stedet å gjøre det på. I disse funksjonene har vi sagt hvilke ruter vi ønsker å bruke samt lagt til Giraffe.
-
-Det eneste vi mangler nå for å ha en fungerende backend er å koble alt dette sammen med en `webHostBuilder`. I Giraffe vil de se slik ut:
-
+Når vi så ønsker å oppdatere et av disse feltene bruker vi hooken. Det kan se slik ut:
 ```fsharp
-[<EntryPoint>]
-let main args =
-    Host.CreateDefaultBuilder(args)
-        .ConfigureWebHostDefaults(
-            fun webHostBuilder ->
-                webHostBuilder
-                    .Configure(Action<IApplicationBuilder> configureApp)
-                    .ConfigureServices(configureServices)
-                    |> ignore)
-        .Build()
-        .Run()
-    0
+Html.input [
+    prop.onChange setTitle
+    prop.value title
+]
 ```
 
-Dette vil knytte alt sammen og initialisere serveren vår.
+Nå trenger vi en funksjon for å lagre oppskriften.
+Om vi skulle ha gjort dette skikkelig ville vi nok trukket ut all nettverkskode ut i en egen fil og laget en fin abstraksjon rundt dette.
+For å illustrere hvordan man kan utføre nettverkskall er det nok enklere å bare lage en closure `saveRecipe` funksjon rett i denne komponenten.
 
-La oss starte serveren vår og bruke en REST-klient til å sjekke endepunktet vårt.
+```FSharp
+let saveRecipe () =
+    // Denne funksjonen skrev vi i den andre artikkelen i denne serien. Her har vi flyttet den til Shared.fs
+    let recipe = createRecipe title description meal time steps ingredients portions
 
-![alt text](works.png "Det funker!")
+    // Tilsier hvilke egenskaper nettverkskallet vårt skal ha
+    // Vi vil at det skal et POST kall som bruker JSON
+    // Vi spesifiserer også hvordan JSON skal encodes så vi er sikre at backend får decoda dette.
+    let properties =
+        [ RequestProperties.Method HttpMethod.POST
+          requestHeaders [ ContentType "application/json" ]
+          RequestProperties.Body (unbox(Encode.Auto.toString(4, recipe, caseStrategy = CamelCase))) ]
 
-It wooooooorks! Med 30 linjer kode har vi en fungerende backend.
-
-## Ruter 🪟
-
-La oss sette opp ruter til de forskjellige funksjonene vi ønsker å støtte. I første omgang så kan vi starte med å:
-
-- Hente ut alle oppskriftene.
-- Lagre nye oppskrifter.
-- Oppdatere en oppskrift.
-- Slette en oppskrift.
-
-For å få til dette så trenger vi disse metodene: `GET`, `POST`, `PUT` og `DELETE`
-
-```fsharp
-let routes =
-    choose [ GET    >=> route  "/api/recipes"    >=> getRecipes 
-             POST   >=> route  "/api/recipe"     >=> postRecipe
-             PUT    >=> route  "/api/recipe"     >=> putRecipe
-             DELETE >=> routef "/api/recipe/%O" deleteRecipe
-             RequestErrors.NOT_FOUND "Not found"
-           ]
+    // Her definerer vi hvordan kallet faktisk skal oppføre seg
+    fetch "http://localhost:5000/api/recipe" properties
+    // Vi vil også lagre resultatet i storen vår og bytte view til den nye oppskriften
+    |> Promise.map(fun _ ->
+        dispatch (AddRecipe recipe)
+        dispatch (SetCurrentView (RecipeDetails recipe)))
+    // Eksplisitt starte promiset
+    |> Promise.start
 ```
 
-I vår delete request sier vi også at vi forventer en GUID. Dette gjør vi ved å bruke `routef` funksjonen sammen med `%o` som er Giraffes måte å si at vi forventer en eller annen query parameter her. `%o` er GUID, men det finnes mange [flere](https://github.com/giraffe-fsharp/Giraffe/blob/master/DOCUMENTATION.md#routef).
+## Kode-deling
+Noe jeg liker med denne stacken er å bruke F# både frontend og backend.
+Heldigvis er dette også veldig enkelt å få til.
+Man har et eget prosjekt i solution hvor man plasserer all kode som man vil skal dele mellom frontend og backend.
+I vårt prosjekt plasserte jeg all oppskriftkode og alle hjelpefunksjoner som trengs i hele stacken.
+Når man så importerer koden blir det transpilert til JavaScript med fable i frontenden og kompilert i backenden.
 
-Her har vi også lagt inn en default rute, så dersom man har en request som ikke treffer noen av de definerte rutene så får vi en 404 - Not Found.
-
-Det vi trenger nå er å implementere disse funksjonene som rutene bruker.
-
-## Database? 📒
-Vanligvis når man har en backend har man også en database som lagrer data. Det skal vi også gjøre, men ikke denne gangen. Til å starte med skal vi gjøre det veldig enkelt og heller bruke en klasse og en C# dictionary til å lagre oppskriftene våre. Det betyr dessverre at dataen ikke blir persistert, men det er noe vi kan fikse senere. Implementasjonen av denne databasen er ikke så veldig viktig så den hopper jeg over her, men du kan finne den på github.
-
-Det jeg har gjort derimot er å lage wrapper funksjoner rundt metodene denne klassen tilbyr, så det blir enklere å bytte den ut senere.
-
-```fsharp
-let getAllRecipes () = fakabase.GetRecipes ()
-let addRecipe newRecipe =
-    fakabase.AddRecipe newRecipe
-let updateRecipe recipeToUpdate =
-    fakabase.UpdateRecipe recipeToUpdate
-let deleteRecipe id =
-    fakabase.DeleteRecipe id
-```
-
-## HttpHandlers
-Det aller siste vi trenger for å få dette systemet til å fungere er noen [HttpHandlers](https://github.com/giraffe-fsharp/Giraffe/blob/master/DOCUMENTATION.md#httphandler). Det er funksjonene som håndterer http-requestene våre. Det vi vil at disse funksjonene skal gjøre er å konvertere JSON som kommer med nettverkskallet over til oppskriftstypen vi allerede har definert. Så skal de utføre en oppdatering mot databasen vår og til slutt returnere noe.
-
-```fsharp
-let getRecipes: HttpHandler =
-    fun (next: HttpFunc) (context: HttpContext) ->
-        json (Recipe.getAllRecipes ()) next context
-
-let postRecipe: HttpHandler =
-    fun (next: HttpFunc) (context: HttpContext) ->
-        task {
-            let! newRecipe = context.BindJsonAsync<Recipe.Recipe>()
-            Recipe.addRecipe newRecipe
-            return! getRecipes next context
-        }
-
-let putRecipe: HttpHandler =
-     fun (next: HttpFunc) (context: HttpContext) ->
-        task {
-            let! recipeToUpdate = context.BindJsonAsync<Recipe.Recipe>()
-            Recipe.updateRecipe recipeToUpdate
-            return! json recipeToUpdate next context
-        }
-
-let deleteRecipe (id: System.Guid): HttpHandler =
-        Recipe.deleteRecipe id
-        text $"Deleted recipe with id: {id}"
-```
-
-Noen ting å legge merke til her:
-
-- `next` er den neste http funksjonen som skal kjøres.
-- `context` har informasjon om http-requesten.
-- `task` er hvordan man kan bygge asynkrone kodeblokker, disse taskene oppfører seg likt som de gjør i C#.
-- Ut fra `context` kan vi mappe JSON bodyen over til oppskriftstypen vi har definert.
-- Vi kan kalle andre HttpHandlere fra HttpHandlers, det kan vi se i `deleteRecipe` hvor vi kaller text handleren.
-
-Når alt denne er inne, og koden forhåpentligvis kompilerer, kan vi teste dette i rest-klient. Hos meg funker nå alle disse rutene, her er GET:
+- Da slipper man å context switche når man bytter mellom de to
+- Trenger ikke gjenta samme kode flere plasser
+- Enklere validering
+- Dele hjelpefunksjoner
 
 
-![alt text](get.png "Resultat fra get request")
 
-## Og vi er i mål 🏁
-Da er vi ferdige. Det ble mye greier denne gangen så om du ønsker å se alt i sin helhet er koden å finne på github. Det eneste ekstra som finnes i repoet er CORS, en annen måte å serializere F# typer til JSON på og vår fakabase.
+## Why tho?
+Oookei, men hvorfor kan jeg ikke bare bruke TypeScript?
+Vel, det kan du jo selvfølgelig gjøre!
 
-Det vi har lært i dag er hvordan Giraffe fungerer og hvor enkelt det er å sette opp en simpel backend med det. Vi har sett hvordan Giraffe er bygd på Kestrel og at konseptene er like med det vi kjenner fra C#. Vi kan nå sette opp ruter og har fått lagd en falsk database som bruker koden vi skrev forrige gang til å forsyne oss med oppskrifter.
+Men, jeg vil påstå at F# gjør den samme jobben - bare bedre.
+Med F# får du:
+- Immutabilitet uten å bruke tredjeparts biblioteker
+- Slipper å tenke like mye på JS, det er gjerne i det grenselandet TS feiler
+- Du slipper implicit any
+- Veldig sikker refaktorering
+- Algebraiske datatyper
+- Sterkt statisk typesystem
 
-Jeg føler det er viktig å nevne at det finnes mange alternativer til Giraffe. Selv liker jeg [Saturn](https://saturnframework.org/) godt. Det er et bibliotek som bygd på Giraffe og abstraherer bort en del av oppsettet. Det finnes andre alternativer også: [Oryx](https://github.com/cognitedata/oryx), [Suave](https://github.com/SuaveIO/suave), [Falco](https://github.com/pimbrouwers/Falco) og sikkert flere jeg ikke kommer på i farta. Så her er det bare å leke seg.
+Da har du endelig nådd slutten!
+Så det er en del forbedringspotensial i dette prosjektet:
+- Nettverkskall kan fort bli gjort litt smoothere.
+- Routing er alltid en forbedring
+- Hadde ikke skadet å gått over stylingen en tur, siden er ikke akkurat pen!
+- Vi kan ikke slette eller oppdatere oppskrifter.
 
-Selv om vi nå kan dele oppskriftene våre med verden har serveren vår noen mangler:
-- Som vi allerede vet har vi ingen database. 
-- Ei heller har vi logging så om noen feil skulle inntreffe får vi aldri beskjed. 
-- Vi har ingen error håndtering, så dersom systemet ikke får til å parset JSON bodyen over til en oppskrift går det veldig galt.
+Om du har lyst til å se appen kan du se den [her](http://slafs.herokuapp.com/), selve koden finner du [her](https://github.com/Bjorn-Strom/F-Friday/tree/4-frontend).
 
-Vi har med andre ord mye forbedringspotensiale her.
-
-Neste gang skal vi lage en enkel frontend for dette systemet. Da skal vi lære hvordan vi kan dele kode mellom frontend og backend, bruke F# til å skrive react kode med typesikker markup og CSS. Det blir bra!
+Sees neste gang, da skal vi se nærmere på promises i JavaScript og hvordan vi kan skrive dem i F# istedenfor!

@@ -4,12 +4,12 @@ open System
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Hosting
 open Microsoft.Extensions.Hosting
-open Microsoft.Extensions.DependencyInjection
 open Microsoft.AspNetCore.Cors.Infrastructure
+open Microsoft.Extensions.DependencyInjection
 open Giraffe
+open HttpHandlers
 open Thoth.Json.Net
 
-open HttpHandlers
 
 let routes =
     choose [ GET    >=> route  "/api/recipes"    >=> getRecipes
@@ -25,12 +25,18 @@ let configureCors (builder: CorsPolicyBuilder) =
            .AllowAnyOrigin() |> ignore
 
 let configureApp (app : IApplicationBuilder) =
-    app.UseGiraffe routes
+    app.UseCors(configureCors)
+       .UseDefaultFiles()
+       .UseStaticFiles()
+       .UseGiraffe routes
 
 let configureServices (services : IServiceCollection) =
     services.AddCors() |> ignore
     services.AddGiraffe() |> ignore
     services.AddSingleton<Json.ISerializer> (Thoth.Json.Giraffe.ThothSerializer (caseStrategy = CamelCase)) |> ignore
+
+let tryGetEnv = Environment.GetEnvironmentVariable >> function null | "" -> None | x -> Some x
+let port = "PORT" |> tryGetEnv |> Option.map uint16 |> Option.defaultValue 80us
 
 [<EntryPoint>]
 let main args =
@@ -40,6 +46,7 @@ let main args =
                 webHostBuilder
                     .Configure(Action<IApplicationBuilder> configureApp)
                     .ConfigureServices(configureServices)
+                    .UseUrls("http://0.0.0.0:" + port.ToString() + "/")
                     |> ignore)
         .Build()
         .Run()

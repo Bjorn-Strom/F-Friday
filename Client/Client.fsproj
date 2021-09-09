@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net5.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Types.fs" />
+    <Compile Include="StoreProvider.fs" />
+    <Compile Include="Hooks.fs" />
+    <Compile Include="Client.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Shared\Shared.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Fable.Fetch" Version="2.3.1" />
+    <PackageReference Include="Fable.Promise" Version="2.2.2" />
+    <PackageReference Include="Feliz" Version="1.45.0" />
+    <PackageReference Include="Fss-lib" Version="2.0.2" />
+    <PackageReference Include="Fss-lib-feliz" Version="1.0.0" />
+    <PackageReference Include="Thoth.Json" Version="5.1.0" />
+  </ItemGroup>
+
+</Project>
