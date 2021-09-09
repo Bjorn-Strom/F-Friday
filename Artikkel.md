@@ -2,7 +2,13 @@
 
 Hei og velkommen til den fjerde posten i en serie om programmeringsspråket F#!
 
-[Forrige gang]() laget vi en backend som kunne serve oppskriftene våre. Med den kan vi hente alle, lage nye, oppdatere eller slette oppskrifter. Denne gangen skal vi lage en enkel frontend som kan kommunisere med denne backenden og vise frem de fine oppskriftene våre.
+Lenker til tidligere artikler:
+- Del 1: [Introduksjon](https://blogg.bekk.no/f-friday-1-39f63618d2e4)
+- Del 2: [Typesystemet](https://blogg.bekk.no/f-friday-2-typesystemet-3e7ee0554f0e)
+- Del 3: [Backenden](https://blogg.bekk.no/f-friday-3-backend-7463edf0f94a)
+- **Del 4: Frontend og React**
+
+[Forrige gang](https://blogg.bekk.no/f-friday-3-backend-7463edf0f94a) laget vi en backend som kunne serve oppskriftene våre. Med den kan vi hente alle, lage nye, oppdatere eller slette oppskrifter. Denne gangen skal vi lage en enkel frontend som kan kommunisere med denne backenden og vise frem de fine oppskriftene våre.
 
 I stedet for å gå gjennom oppsettet til en server, client og hvordan man deler kode mellom dem så kan man bruke en template.
 Det finnes ganske mange av disse faktisk: [SAFE Stack](https://safe-stack.github.io), [SAFEr.Template](https://github.com/Dzoukr/SAFEr.Template), [SAFE.Simplified](https://github.com/Zaid-Ajaj/SAFE.Simplified) med flere, men SAFE Stack er den jeg har brukt mest.
@@ -185,10 +191,10 @@ Så vi trenger *actions*, en *reducer* og en initial *store*.
 La oss starte med å definere datatypen til storen:
 ```fsharp
 type Store =
-    { Recipes: Recipe list RemoteData
+    { Recipes: RemoteData<Recipe list>
       View: View }
 ```
-`Recipe list RemoteData` leses forøvrig slik: `RemoteData<list<Recipe>>`. Du kan også skrive typene på denne måten om du vil, da F# godtar begge variantene.
+`RemoteData<Recipe list>` leses forøvrig slik: `RemoteData<list<Recipe>>`. Du kan også skrive typene på denne måten om du vil, da F# godtar begge variantene.
 Som nevnt tidligere lagrer vi oppskriftene og hvilket view vi er inne i.
 Dette bruker oppskrift typen og definerte for lenge siden, sammen med `RemoteData` og `View` som vi definerte i stad.
 
@@ -217,8 +223,9 @@ let StoreReducer state action =
     | SetRecipes recipes -> { state with Recipes = recipes }
     | SetCurrentView view -> { state with View = view }
 ```
+Her har vi en ny type syntaks, nemlig {state with Recipes = newRecipes}. Dette er en måte å opprette en kopi av en eksisterende record på, og samtidig bytte ut noen av feltene i den. I vårt tilfelle vil vi bytte ut feltet Recipes. Selv om det ikke er det samme kan det nesten tenkes litt på som en spread operator fra JavaScript {…state, Recipes: recipes}.
 
-Før vi setter opp selve contexten trenger vi vår inital store:
+Deretter oppretter vi vår initial store:
 ```fsharp
 let initialStore =
     { Recipes = Fetching
@@ -386,72 +393,7 @@ Når man så importerer koden blir det transpilert til JavaScript med fable i fr
 - Enklere validering
 - Dele hjelpefunksjoner
 
-## Promises
-Jeg føler det kan være en god ide å ta en ekstra runde på promises og hvordan de funker i F# kontra JS.
 
-I JavaScript har vi 2 måter å skrive promises på,
-`then` eller `async` notasjon.
-
-For å bruke det siste POST eksempelet vår vil man kunne skrevet det i JavaScript på disse to måtene.
-
-Med `.then`
-```javascript
-const properties = { method: 'POST',
-    headers: {
-        'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(data),
-}
-fetch('http://localhost:5000/api/recipe', properties).then(() => {
-    // Lagre ting i store
-})
-```
-
-Med `async`
-
-```javascript
-const saveRecipe = async () => {
-    const recipe = createRecipe(...)
-    const properties =
-        { method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(recipe),
-        }
-    await fetch('http://localhost:5000/api/recipe', properties)
-    // lagre ting i store
-}
-```
-
-Tro det eller ei så har F# tilsvarende måter å utføre promises.
-I vår kode har vi brukt
-```FSharp
-let properties =
-    [ ..... ]
-fetch "http://localhost:5000/api/recipe" properties
-|> Promise.map(fun _ ->
-// lagre ting i store)
-|> Promise.start
-```
-Hvor `Promise.map` kan sees på som F# sin verson av `.then` (dette er ikke strengt tatt riktig, men jeg føler det er en fin måte å tenke på dette når man først starter med F#)
-
-I tillegg finnes det en annen syntax for dette i F# som heter [computation expressions](https://fsharpforfunandprofit.com/series/computation-expressions/) som man kan tenke på som en async funksjon i JavaScript (igjen, ikke helt riktig, men nyttig sted å starte).
-
-I F# vil man kunne skrevet det tilsvarende slik:
-```fsharp
-let saveRecipe () =
-    let recipe = createRecipe ...
-    let properties = [...]
-    promise {
-        do fetch "http://localhost:5000/api/recipe" properties
-        do dispatch (AddRecipe recipe)
-        do dispatch (SetCurrentView (RecipeDetails recipe)))
-    }
-    |> Promise.start
-```
-
-Den største forskjellen, sett bort fra syntax, er at du i F# eksplisitt må starte promiset.
 
 ## Why tho?
 Oookei, men hvorfor kan jeg ikke bare bruke TypeScript?
@@ -475,10 +417,4 @@ Så det er en del forbedringspotensial i dette prosjektet:
 
 Om du har lyst til å se appen kan du se den [her](http://slafs.herokuapp.com/), selve koden finner du [her](https://github.com/Bjorn-Strom/F-Friday/tree/4-frontend).
 
-Sees neste gang, da blir det databaser!
-
-Lenker til tidligere artikler:
-- Del 1: [Introduksjon](https://blogg.bekk.no/f-friday-1-39f63618d2e4)
-- Del 2: [Typesystemet](https://blogg.bekk.no/f-friday-2-typesystemet-3e7ee0554f0e)
-- Del 3: [Backenden](https://blogg.bekk.no/f-friday-3-backend-7463edf0f94a)
-- **Del 4: Frontend og React**
+Sees neste gang, da skal vi se nærmere på promises i JavaScript og hvordan vi kan skrive dem i F# istedenfor!

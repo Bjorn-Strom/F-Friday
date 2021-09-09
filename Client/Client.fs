@@ -231,7 +231,7 @@ let NewRecipeView () =
         *)
 
         promise {
-            do fetch "http://0.0.0.0:80/api/recipe" properties |> ignore
+            do fetch "http://slafs.herokuapp.com/api/recipe" properties |> ignore
             do dispatch (AddRecipe recipe)
             do dispatch (SetCurrentView (RecipeDetails recipe))
         }
@@ -305,7 +305,7 @@ let NewRecipeView () =
                     prop.onChange (norwegianToMeal >> setMeal)
                 ]
             ]
-            FormElement "Tid" [
+            FormElement "Minutter" [
                 Html.input [
                     prop.type' "number"
                     prop.onChange (float >> setTime)
