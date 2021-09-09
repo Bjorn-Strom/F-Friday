@@ -2,6 +2,13 @@
 
 Hei og velkommen til den andre posten i en serie om programmeringsspråket F#!
 
+Lenker til tidligere artikler:
+- Del 1: [Introduksjon](https://blogg.bekk.no/f-friday-1-39f63618d2e4)
+- **Del 2: Typesystemet**
+- Del 3: [Backenden](https://blogg.bekk.no/f-friday-3-backend-7463edf0f94a)
+- Del 4: [Frontend og React](https://blogg.bekk.no/f-friday-4-frontend-og-react-c356d34a6095)
+
+
 [Forrige gang](https://blogg.bekk.no/f-friday-1-39f63618d2e4) startet vi med en
 kort og lett introduksjon til hva F# er og hva du kan bruke det til. Denne
 gangen skal vi bruke litt mer tid til å se på hva F# har å by på samtidig som vi
@@ -10,11 +17,11 @@ organisere matoppskrifter!
 
 ## Hva står på menyen?
 
-Systemet er nokså enkelt og består av: 
+Systemet er nokså enkelt og består av:
 
 - **Measurements** er målenheter. Her kommer vi til å implementere noen av de
 enhetene som stadig vekk dukker opp. Disse kan se slik ut: *g, ss *eller
-lignende. 
+lignende.
 - **Ingredients** er ingrediensene en oppskrift kan bestå av. En ingrediens består
 av en målenhet, volum og et navn.
 - **Recipe**. Selve oppskriften blir den største typen vi kommer til å lage i
@@ -23,7 +30,7 @@ identifisere oppskrifter. Vi vil vite hva slags måltid det er, frokost, middag,
 lunsj eller dessert. Hvor lang tid det vil ta å lage dette om man følger
 oppskriften. Steg som beskriver hvordan man lager maten og alle ingrediensene
 som er nødvendig. Og til slutt et felt som sier hvor mange porsjoner denne
-retten kommer til å ha. 
+retten kommer til å ha.
 
 Alt dette skal vi nå implementere i F#. Dette blir gøy!
 
@@ -57,17 +64,17 @@ Armert med denne stekespaden kan vi nå modelere målenheter i systemet vårt. V
 skulle jo bruke en DU så la oss bare definere den.
 
 ```fsharp
-type Measurement = 
+type Measurement =
     | Kg
-    | G 
-    | Mg 
-    | L 
-    | Dl 
+    | G
+    | Mg
+    | L
+    | Dl
     | Ml
-    | Ms 
-    | Ss 
-    | Ts 
-    | Stk 
+    | Ms
+    | Ss
+    | Ts
+    | Stk
 ```
 
 Vi har ikke knyttet noen typer til denne, som også går greit. Da kan den tenkes
@@ -100,13 +107,13 @@ Problemet med dette er at det ikke ligner veldig på det man finner i
 oppskrifter. Vi ville jo skrive noe som ligner på *200g smør. *Vi kan derfor
 opprette en hjelpefunksjon som lager ingredienser for oss.
 
-Dette definerer `ingredient`funksjonen. 
+Dette definerer `ingredient`funksjonen.
 
-Dette definerer `ingredient` funksjonen. 
+Dette definerer `ingredient` funksjonen.
 ```fsharp
-let ingredient amount measurement name = 
+let ingredient amount measurement name =
     { Amount = amount
-      Measurement = measurement 
+      Measurement = measurement
       Name = name }
 ```
 
@@ -124,7 +131,7 @@ Denne funksjonen oppretter type for oss og vi kan bruke den slik: `ingredient
 
 Når det kommer til oppskrifter ønsker vi å vite hva slags måltid denne retten
 tilhører. Er det en rett man lager til frokost, lunsj, middag eller dessert?
-Hvis du som meg tenker **eller** her er nok atter en *DU* løsningen. 
+Hvis du som meg tenker **eller** her er nok atter en *DU* løsningen.
 ```fsharp
 type Meal =
     | Breakfast
@@ -145,7 +152,7 @@ allerede vet trenger den å ha:
 - **Ingrediensene **man trenger.
 - **Porsjoner** så vi vet hvor mange vi kan invitere til middag.
 
-Tilberedningstiden kan være et antall timer eller minutter. For eksempel: 
+Tilberedningstiden kan være et antall timer eller minutter. For eksempel:
 
 * 1.5 time
 * 20 minutter
@@ -210,8 +217,8 @@ ofte trenger for å lage norsk husmannskost er kokte poteter. Så la oss lage en
 oppskrift for det:
 
 ```fsharp
-let koktPotet = 
-  createRecipe 
+let koktPotet =
+  createRecipe
      Dinner
      "Kokt potet"
      "En skikkelig, potensielt smakløs, klassiker som du som inngår i ganske mange andre retter."
@@ -251,7 +258,7 @@ definerte. Gjør ikke dette koden veldig leselig?
 
 ## Og til dessert
 
-Så hva har vi egentlig fått til? 
+Så hva har vi egentlig fått til?
 
 Vi har:
 
