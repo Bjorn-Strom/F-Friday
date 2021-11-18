@@ -2,53 +2,201 @@ module Database
 
 open Shared
 
-// Alt dette skal vi erstatte med en database senere
-
-type Fakabase () =
-    let recipes = System.Collections.Generic.Dictionary<System.Guid, Recipe>()
-
-    member __.GetRecipes () =
-        List.ofSeq recipes.Values
-        
-    member __.AddRecipe (newRecipe: Recipe) = 
-        recipes.Add(newRecipe.Id, newRecipe)
-
-    member __.UpdateRecipe (recipeToUpdate: Recipe) =
-        recipes.[recipeToUpdate.Id] <- recipeToUpdate
-
-    member __.DeleteRecipe (recipeId: System.Guid) =
-        recipes.Remove(recipeId) |> ignore
+open System
+open Dapper.FSharp
+open Dapper.FSharp.PostgreSQL
+open Npgsql
 
 
-let fakabase = Fakabase()
-fakabase.AddRecipe 
-    (createRecipe 
-         "Kokt potet"
-         "En skikkelig, potensielt smakløs, klassiker som du som inngår i ganske mange andre retter."
-         Dinner
-         20.
-         [ "Skrubb og skyll potetene"
-           "Del potetene i 2"
-           "Kok dem i 10-15 minutter til de er gjennomkokte" ]
-         [ ingredient 800. G "Potet"
-           ingredient 1. L "Vann"
-           ingredient 1. Ts "Salt" ]
-         4)
-fakabase.AddRecipe 
-        (createRecipe
-            "Koteletter med kokt potet"
-            "Oi oi oi så hærlig"
-            Dinner
-            5.
-            [  "Grill kotelettene i 3-4 minutt på hver side, dryss med salt og pepper"
-            ] 
-            [ ingredient 1. Ts "Salt"; ingredient 0.5 Ts "Pepper"; ingredient 4. Stk "Kotelett" ]
-            4)
 
-let getAllRecipes () = fakabase.GetRecipes ()
+let connectionString =
+    let credentials =
+        //let databaseUrl = Environment.GetEnvironmentVariable "DATABASE_URL"
+        let databaseUrl = "postgres://febcizbyapbbkz:d1fb31199c4b76e09d46afc5162d6b5e877270b4f71b0a89c617dd38176a6201@ec2-63-33-14-215.eu-west-1.compute.amazonaws.com:5432/d5n1q0s03c33l9"
+
+        let usernamePassword = (databaseUrl.Split("@")[0]).Replace("postgres://", "")
+        let hostPortDatabase = databaseUrl.Split("@")[1]
+        let hostPort = hostPortDatabase.Split("/")[0]
+
+        {| Database = hostPortDatabase.Split("/")[1]
+           User = usernamePassword.Split(":")[0]
+           Password = usernamePassword.Split(":")[1]
+           Host = hostPort.Split(":")[0]
+           Port = hostPort.Split(":")[1] |}
+
+    $"User ID={credentials.User};Password={credentials.Password};Host={credentials.Host};Port={credentials.Port};Database={credentials.Database};Pooling=true;SSL Mode=Require;TrustServerCertificate=True;"
+
+let connection = new NpgsqlConnection(connectionString)
+
+[<CLIMutable>]
+type RecipeDbModel =
+    { Id: string
+      Title: string
+      Description: string
+      Meal: string
+      Time: float
+      Steps: string array
+      Portions: int }
+
+[<CLIMutable>]
+type IngredientDbModel =
+    { Volume: float
+      Measurement: string
+      Name: string
+      Recipe: string }
+
+let recipeTable = table'<RecipeDbModel> "Recipe"
+let ingredientTable = table'<IngredientDbModel> "Ingredient"
+
+let recipeToDb (recipe: Recipe) =
+    { Id = recipe.Id.ToString()
+      Title = recipe.Title
+      Description = recipe.Description
+      Meal = recipe.Meal |> stringifyMeal
+      Time = recipe.Time
+      Steps = List.toArray recipe.Steps
+      Portions = recipe.Portions }
+
+let recipeDbToDomain (recipe: RecipeDbModel) ingredients =
+    { Id = Guid.Parse(recipe.Id)
+      Title = recipe.Title
+      Description = recipe.Description
+      Meal = stringToMeal recipe.Meal
+      Time = recipe.Time
+      Steps = Array.toList recipe.Steps
+      Ingredients = ingredients
+      Portions = recipe.Portions }
+
+let ingredientToDb (ingredient: Ingredient) recipeId =
+    { Volume = ingredient.Volume
+      Measurement = ingredient.Measurement |> measurementToString
+      Name = ingredient.Name
+      Recipe = recipeId }
+
+let ingredientDbToDomain (ingredient: IngredientDbModel) =
+    { Volume = ingredient.Volume
+      Measurement = stringToMeasurement ingredient.Measurement
+      Name = ingredient.Name }
+
+let private recipeToDbModels recipe =
+    let recipeToInsert = recipeToDb recipe
+
+    let ingredientsToInsert =
+        recipe.Ingredients
+        |> List.map (fun i -> ingredientToDb i recipeToInsert.Id)
+
+    (recipeToInsert, ingredientsToInsert)
+
+let getAllRecipes () =
+    task {
+        let! recipeDbModels =
+            select {
+                for r in recipeTable do
+                    selectAll
+            }
+            |> connection.SelectAsync<RecipeDbModel>
+
+        let! ingredientDbModels =
+            select {
+                for i in ingredientTable do
+                    selectAll
+            }
+            |> connection.SelectAsync<IngredientDbModel>
+
+        let recipeDomainModels =
+            Seq.map
+                (fun r ->
+                    let ingredientsForRecipe =
+                        ingredientDbModels
+                        |> Seq.filter (fun i -> i.Recipe = r.Id)
+                        |> Seq.map ingredientDbToDomain
+                        |> Seq.toList
+
+                    recipeDbToDomain r ingredientsForRecipe)
+                recipeDbModels
+            |> Seq.toList
+
+        printfn $"Got {List.length recipeDomainModels} recipe(s)"
+
+        return recipeDomainModels
+    }
+
 let addRecipe newRecipe =
-    fakabase.AddRecipe newRecipe
+    task {
+        let recipeToInsert, ingredientsToInsert = recipeToDbModels newRecipe
+
+        let! insertedRecipe =
+            insert {
+                into recipeTable
+                value recipeToInsert
+            }
+            |> connection.InsertAsync
+
+        printfn $"Inserted {insertedRecipe} recipe(s)"
+
+        let! insertedIngredients =
+            insert {
+                into ingredientTable
+                values ingredientsToInsert
+            }
+            |> connection.InsertAsync
+
+        printfn $"Inserted {insertedIngredients} ingredient(s)"
+    }
+
 let updateRecipe recipeToUpdate =
-    fakabase.UpdateRecipe recipeToUpdate
-let deleteRecipe id =
-    fakabase.DeleteRecipe id
+    task {
+        let recipeToUpdate, ingredientsToUpdate = recipeToDbModels recipeToUpdate
+
+        let! updatedRecipe =
+            update {
+                for r in recipeTable do
+                    set recipeToUpdate
+                    where (r.Id = recipeToUpdate.Id)
+            }
+            |> connection.UpdateAsync
+
+        printfn $"Updated {updatedRecipe} recipe(s)"
+
+        // For å oppdatere alle ingrediense så sletter vi de gamle og inserter de nye
+        let! deletedIngredients =
+            delete {
+                for i in ingredientTable do
+                    where (i.Recipe = recipeToUpdate.Id)
+            }
+            |> connection.DeleteAsync
+
+        printfn $"Deleted {deletedIngredients} ingredients."
+
+        let! insertedIngredients =
+            insert {
+                into ingredientTable
+                values ingredientsToUpdate
+            }
+            |> connection.InsertAsync
+
+        printfn $"Inserted {insertedIngredients} ingredient(s)"
+    }
+
+let deleteRecipe (id: Guid) =
+    task {
+        let id = id.ToString()
+
+        let! ingredientsDeleted =
+            delete {
+                for i in ingredientTable do
+                    where (i.Recipe = id)
+            }
+            |> connection.DeleteAsync
+
+        printfn $"Deleted {ingredientsDeleted} ingredient(s)"
+
+        let! recipeDeleted =
+            delete {
+                for r in recipeTable do
+                    where (r.Id = id)
+            }
+            |> connection.DeleteAsync
+
+        printfn $"Deleted {recipeDeleted} recipe(s)"
+    }

@@ -2,25 +2,33 @@ module HttpHandlers
 
 open Giraffe
 open Microsoft.AspNetCore.Http
-open FSharp.Control.Tasks
 
 let getRecipes: HttpHandler =
     fun (next: HttpFunc) (context: HttpContext) ->
-        json (Database.getAllRecipes ()) next context
+        task {
+            let! recipes = Database.getAllRecipes ()
+            return! json recipes next context
+        }
+
 let postRecipe: HttpHandler =
     fun (next: HttpFunc) (context: HttpContext) ->
         task {
             let! newRecipe = context.BindJsonAsync<Shared.Recipe>()
-            Database.addRecipe newRecipe
-            return! getRecipes next context
+            do! Database.addRecipe newRecipe
+            return! json newRecipe next context
         }
+
 let putRecipe: HttpHandler =
-     fun (next: HttpFunc) (context: HttpContext) ->
+    fun (next: HttpFunc) (context: HttpContext) ->
         task {
             let! recipeToUpdate = context.BindJsonAsync<Shared.Recipe>()
-            Database.updateRecipe recipeToUpdate
+            do! Database.updateRecipe recipeToUpdate
             return! json recipeToUpdate next context
         }
-let deleteRecipe (id: System.Guid): HttpHandler =
-        Database.deleteRecipe id
-        text $"Deleted recipe with id: {id}"
+
+let deleteRecipe (id: System.Guid) : HttpHandler =
+    fun (next: HttpFunc) (context: HttpContext) ->
+        task {
+            do! Database.deleteRecipe id
+            return! text $"Deleted recipe with id: {id}" next context
+        }

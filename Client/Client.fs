@@ -11,6 +11,8 @@ open Types
 open Store
 
 
+let baseUrl =  "http://slafs.herokuapp.com/"// "http://localhost:80/"
+
 // Fonts
 let headingFont = FontFamily.custom "Nunito"
 let textFont = FontFamily.custom "Raleway"
@@ -57,7 +59,7 @@ let Button (text: string) onClick backgroundColor color =
 
 [<ReactComponent>]
 let Menu () =
-    let (_, dispatch) = useStore()
+    let _, dispatch = useStore()
     Html.nav [
         prop.fss [
             BackgroundColor' green
@@ -170,7 +172,7 @@ let Homeview() =
 
 [<ReactComponent>]
 let MealView meal setRecipeView =
-    let (state, _) = useStore()
+    let state, _ = useStore()
     match state.Recipes with
     | Data recipes ->
         Html.div [
@@ -191,15 +193,15 @@ let MealView meal setRecipeView =
 
 [<ReactComponent>]
 let NewRecipeView () =
-    let (_, dispatch) = useStore()
+    let _, dispatch = useStore()
 
-    let (title, setTitle) = React.useState ""
-    let (description, setDescription) = React.useState ""
-    let (meal, setMeal) = React.useState Breakfast
-    let (time, setTime) = React.useState 0.
-    let (steps, setSteps) = React.useState<string list> List.empty
-    let (ingredients, setIngredients) = React.useState<Ingredient list> List.empty
-    let (portions, setPortions) = React.useState 0
+    let title, setTitle = React.useState ""
+    let description, setDescription = React.useState ""
+    let meal, setMeal = React.useState Breakfast
+    let time, setTime = React.useState 0.
+    let steps, setSteps = React.useState<string list> List.empty
+    let ingredients, setIngredients = React.useState<Ingredient list> List.empty
+    let portions, setPortions = React.useState 0
 
     let setSteps key value =
         if List.length steps > key then
@@ -223,7 +225,7 @@ let NewRecipeView () =
               requestHeaders [ ContentType "application/json" ]
               RequestProperties.Body (unbox(Encode.Auto.toString(4, recipe, caseStrategy = CamelCase))) ]
         (*
-        fetch "http://0.0.0.0:80/api/recipe" properties
+        fetch $"{baseUrl}api/recipe" properties
         |> Promise.map(fun _ ->
             dispatch (AddRecipe recipe)
             dispatch (SetCurrentView (RecipeDetails recipe)))
@@ -231,7 +233,7 @@ let NewRecipeView () =
         *)
 
         promise {
-            do fetch "http://slafs.herokuapp.com/api/recipe" properties |> ignore
+            do fetch $"{baseUrl}api/recipe" properties |> ignore
             do dispatch (AddRecipe recipe)
             do dispatch (SetCurrentView (RecipeDetails recipe))
         }
@@ -259,7 +261,7 @@ let NewRecipeView () =
                     Html.input [
                         prop.type' "number"
                         prop.value value.Volume
-                        prop.onChange (fun n -> setIngredients key {value with Volume = (float n)})
+                        prop.onChange (fun (n: float) -> setIngredients key {value with Volume = n})
                     ]
                 ]
                 FormElement "Enhet" [
@@ -308,7 +310,7 @@ let NewRecipeView () =
             FormElement "Minutter" [
                 Html.input [
                     prop.type' "number"
-                    prop.onChange (float >> setTime)
+                    prop.onChange setTime
                     prop.value time
                 ]
             ]
@@ -331,7 +333,7 @@ let NewRecipeView () =
             FormElement "Porsjoner" [
                 Html.input [
                     prop.type' "number"
-                    prop.onChange (int >> setPortions)
+                    prop.onChange setPortions
                 ]
             ]
 
@@ -342,7 +344,7 @@ let NewRecipeView () =
 
 [<ReactComponent>]
 let PageView() =
-    let (state, dispatch) = useStore()
+    let state, dispatch = useStore()
     let setRecipeView recipe = dispatch (SetCurrentView (RecipeDetails recipe))
     let MealView meal = MealView meal setRecipeView
 
@@ -373,10 +375,10 @@ let PageView() =
 
 [<ReactComponent>]
 let Container() =
-    let (state, dispatch) = useStore()
+    let state, dispatch = useStore()
 
-    Hooks.useEffectOnce((fun () ->
-        fetch "http://slafs.herokuapp.com/api/recipes" []
+    Hooks.useEffectOnce(fun () ->
+        fetch $"{baseUrl}api/recipes" []
         |> Promise.bind (fun result -> result.text())
         |> Promise.map (fun result -> Decode.Auto.fromString<Recipe list>(result, caseStrategy=CamelCase))
         |> Promise.map (fun result ->
@@ -384,7 +386,7 @@ let Container() =
             | Ok recipes -> Data recipes
             | Error e -> Failure e)
         |> Promise.map (fun r -> dispatch (SetRecipes r))
-        |> Promise.start))
+        |> Promise.start)
 
     match state.Recipes with
     | Fetching -> Html.div [ prop.text "Laster..." ]

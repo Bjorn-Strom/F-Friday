@@ -10,7 +10,6 @@ open Giraffe
 open HttpHandlers
 open Thoth.Json.Net
 
-
 let routes =
     choose [ GET    >=> route  "/api/recipes"    >=> getRecipes
              POST   >=> route  "/api/recipe"     >=> postRecipe

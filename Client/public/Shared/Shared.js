@@ -1,4 +1,4 @@
-import { Record, Union } from "../.fable/fable-library.3.2.8/Types.js";
+import { MatchFailureException, toString, Record, Union } from "../.fable/fable-library.3.2.8/Types.js";
 import { int32_type, list_type, class_type, record_type, string_type, float64_type, union_type } from "../.fable/fable-library.3.2.8/Reflection.js";
 import { mapIndexed, ofArray } from "../.fable/fable-library.3.2.8/List.js";
 import { newGuid } from "../.fable/fable-library.3.2.8/Guid.js";
@@ -144,8 +144,8 @@ export function mealToNorwegian(meal) {
     }
 }
 
-export function norwegianToMeal(name) {
-    switch (name) {
+export function norwegianToMeal(_arg1) {
+    switch (_arg1) {
         case "Frokost": {
             return new Meal(0);
         }
@@ -160,6 +160,31 @@ export function norwegianToMeal(name) {
         }
         default: {
             return new Meal(2);
+        }
+    }
+}
+
+export function stringifyMeal(meal) {
+    let copyOfStruct = meal;
+    return toString(copyOfStruct);
+}
+
+export function stringToMeal(_arg1) {
+    switch (_arg1) {
+        case "Breakfast": {
+            return new Meal(0);
+        }
+        case "Lunch": {
+            return new Meal(1);
+        }
+        case "Dinner": {
+            return new Meal(2);
+        }
+        case "Dessert": {
+            return new Meal(3);
+        }
+        default: {
+            throw (new MatchFailureException("/Users/bjornivarstrom/Documents/functional/RecipeTracker/Shared/Shared.fs", 84, 4));
         }
     }
 }

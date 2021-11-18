@@ -1,5 +1,5 @@
 # Build
-FROM mcr.microsoft.com/dotnet/sdk:5.0-alpine as build
+FROM mcr.microsoft.com/dotnet/sdk:6.0-alpine as build
 
 WORKDIR /app
 
@@ -19,12 +19,13 @@ WORKDIR /app/Server
 RUN dotnet publish -c release -o out
 
 # Run
-FROM mcr.microsoft.com/dotnet/sdk:5.0-alpine
+FROM mcr.microsoft.com/dotnet/aspnet:6.0-alpine
 WORKDIR /app/Server
 COPY --from=build /app/Server/out .
 RUN mkdir wwwroot
 COPY --from=build /app/Client/dist wwwroot/.
 ENV PORT=80
 ENV ASPNETCORE_URLS=http://+:80
+ENV DATABASE_URL=$DATABASE_URL
 EXPOSE 80
 CMD dotnet Server.dll

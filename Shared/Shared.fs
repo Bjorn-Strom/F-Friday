@@ -70,13 +70,22 @@ let mealToNorwegian meal =
   | Dinner -> "Middag"
   | Desert -> "Dessert"
 
-let norwegianToMeal name =
-    match name with
+let norwegianToMeal =
+    function
     | "Frokost" -> Breakfast
     | "Lunsj" -> Lunch
     | "Middag" -> Dinner
     | "Dessert" -> Desert
     | _ -> Dinner
+
+let stringifyMeal meal = meal.ToString()
+
+let stringToMeal =
+    function
+    | "Breakfast" -> Breakfast
+    | "Lunch" -> Lunch
+    | "Dinner" -> Dinner
+    | "Dessert" -> Desert
 
 type Recipe =
     { Id: System.Guid
