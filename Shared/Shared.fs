@@ -85,7 +85,7 @@ let stringToMeal =
     | "Breakfast" -> Breakfast
     | "Lunch" -> Lunch
     | "Dinner" -> Dinner
-    | "Dessert" -> Desert
+    | "Desert" -> Desert
 
 type Recipe =
     { Id: System.Guid

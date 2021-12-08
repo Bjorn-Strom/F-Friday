@@ -7,14 +7,15 @@ open Dapper.FSharp
 open Dapper.FSharp.PostgreSQL
 open Npgsql
 
-
-
 let connectionString =
     let credentials =
-        //let databaseUrl = Environment.GetEnvironmentVariable "DATABASE_URL"
-        let databaseUrl = "postgres://febcizbyapbbkz:d1fb31199c4b76e09d46afc5162d6b5e877270b4f71b0a89c617dd38176a6201@ec2-63-33-14-215.eu-west-1.compute.amazonaws.com:5432/d5n1q0s03c33l9"
+        let databaseUrl =
+            Environment.GetEnvironmentVariable "DATABASE_URL"
 
-        let usernamePassword = (databaseUrl.Split("@")[0]).Replace("postgres://", "")
+        let usernamePassword =
+            (databaseUrl.Split("@")[0])
+                .Replace("postgres://", "")
+
         let hostPortDatabase = databaseUrl.Split("@")[1]
         let hostPort = hostPortDatabase.Split("/")[0]
 
@@ -48,7 +49,7 @@ type IngredientDbModel =
 let recipeTable = table'<RecipeDbModel> "Recipe"
 let ingredientTable = table'<IngredientDbModel> "Ingredient"
 
-let recipeToDb (recipe: Recipe) =
+let private recipeToDb (recipe: Recipe) =
     { Id = recipe.Id.ToString()
       Title = recipe.Title
       Description = recipe.Description
@@ -57,7 +58,7 @@ let recipeToDb (recipe: Recipe) =
       Steps = List.toArray recipe.Steps
       Portions = recipe.Portions }
 
-let recipeDbToDomain (recipe: RecipeDbModel) ingredients =
+let private recipeDbToDomain (recipe: RecipeDbModel) ingredients =
     { Id = Guid.Parse(recipe.Id)
       Title = recipe.Title
       Description = recipe.Description
@@ -67,13 +68,13 @@ let recipeDbToDomain (recipe: RecipeDbModel) ingredients =
       Ingredients = ingredients
       Portions = recipe.Portions }
 
-let ingredientToDb (ingredient: Ingredient) recipeId =
+let private ingredientToDb (ingredient: Ingredient) recipeId =
     { Volume = ingredient.Volume
       Measurement = ingredient.Measurement |> measurementToString
       Name = ingredient.Name
       Recipe = recipeId }
 
-let ingredientDbToDomain (ingredient: IngredientDbModel) =
+let private ingredientDbToDomain (ingredient: IngredientDbModel) =
     { Volume = ingredient.Volume
       Measurement = stringToMeasurement ingredient.Measurement
       Name = ingredient.Name }
@@ -85,7 +86,7 @@ let private recipeToDbModels recipe =
         recipe.Ingredients
         |> List.map (fun i -> ingredientToDb i recipeToInsert.Id)
 
-    (recipeToInsert, ingredientsToInsert)
+    recipeToInsert, ingredientsToInsert
 
 let getAllRecipes () =
     task {
