@@ -12,15 +12,17 @@ Lenker til tidligere artikler:
 [Forrige gang](https://blogg.bekk.no/f-friday-4-frontend-og-react-c356d34a6095) laget vi en enkelt frontend i react som kunne snakke med backenden vår. Når vi først lagde backenden vår brukte vi et dictionary til å holde på alle oppskriftene våre. Denne gangen skal vi bytte ut denne in-memory databasen med PostgreSQL.
 
 ## Dagens plan
-Vi skal starte julebordet med å se på noen av de mange databasemuligheter som finnes til F# før vi bruker `Dapper` til å implementere funksjonaliteten vi trenger for å oppdatere oppskriftene våre.
+Vi skal starte gildet med å se på noen av de mange databasemuligheter som finnes til F# før vi bruker `Dapper` til å implementere funksjonaliteten vi trenger for å oppdatere oppskriftene våre.
 
 ## Verktøy
-I C# bruker man, i min erfaring, Entity Framework (EF) og selv om det funker fint er det flott å ha noen alternativer.
-F# har en del spennende alternativer og under er en liten liste:
+I C# bruker man, i min erfaring, Entity Framework (EF) og selv om det funker greit nok er det jo flott å ha noen alternativer.
+
+F# har en del spennende valgalternativer og under er en liten liste med de jeg har erfaring med:
 - [SqlProvider](https://github.com/fsprojects/SQLProvider) - Genererer typer fra databasen din mens du programmerer. Det betyr at koden din ikke vil kompilere dersom du har skrevet feil SQL. Behøver en aktiv tilgang til din database for å bygge koden din, som kan være litt irriterende.
 - [RepoDb](https://github.com/mikependon/RepoDB) - Gir et EF lignende API.
-- [Dapper.FSharp](https://github.com/Dzoukr/Dapper.FSharp) - En lettvekts wrapper på Dapper som gjør det enkelt å bruke Dapper med Giraffe
-Og det finnes mange flere også så om man er interessert er det bare å google litt så kommer det masse forslag.
+- [Dapper.FSharp](https://github.com/Dzoukr/Dapper.FSharp) - En lettvekts wrapper på Dapper som gjør det enkelt å bruke Dapper med Giraffe.
+
+Det finnes flere også så om man er interessert er det bare å google litt så kommer det masse forslag.
 
 ## Dapper
 [Dapper](https://github.com/DapperLib/Dapper) er, som de selv sier, en "simple object mapper for .Net". Det er en lettvekts måte å kommunisere med databaser på.
@@ -36,7 +38,7 @@ type AddressDbModel {
 }
 ```
 
-Så kan vi inserte dem i databasen slik:
+Så kan vi bruke dapper til å skrive en insert query slik:
 ```fsharp
 // Først må vi definere tabellene våre
 let AddressTable = Table'<AddressDbModel> "Addresses"
@@ -53,16 +55,38 @@ select {
 } |> dbConnection.SelectAsync<AddressDbModel>
 ```
 
-## Gjør om alt til tasks
 
-## Hjelpefunksjoner
-Det vi egentlig trenger å gjøre er å opprette en databasekobling til en database hvor vi har opprettet tabeller for oppskrifter og ingredienser.
-For å gjøre det så enkelt som mulig er det opprettet 2 tabeller, 1 med oppskrifter og 1 med ingredienser. Hver ingrediens har en fremmednøkkel til oppskrifter, så vi vet hvilke ingredienser en oppskrift faktisk består av.
+## Forbered sjiraffen
 
-Det vi også trenger er noen databasemodeller. Disse vil ikke være lik Domene-modellene da de ikke er helt like.
-
-Oppskriftstypen vår ser slik ut:
+Alle disse blokkene returnerer tasks, så la oss skrive om Giraffe koden vår til å bruke tasks også. Da blir det enkelt å få disse to biblioteken til å snakke sammen. Fra forrige gang mangler `getRecipes` og `deleteRecipe` tasks. Det legger vi enkelt til og HttpHandlerene våre ser nå slik ut:
 ```fsharp
+let getRecipes: HttpHandler =
+    fun (next: HttpFunc) (context: HttpContext) ->
+        task {
+            let! recipes = Database.getAllRecipes ()
+          return! json recipes next context
+        }
+let deleteRecipe (id: System.Guid) : HttpHandler =
+    fun (next: HttpFunc) (context: HttpContext) ->
+        task {
+            do! Database.deleteRecipe id
+            return! text $"Deleted recipe with id: {id}" next context
+        }
+```
+
+## Modeller og funksjoner
+Det vi trener gå gjøre er å opprette en databasekobling til en databasen vår.
+Denne datgabase nhar allerede fått opprettett tabeller for oppskrifter og ingredienser.
+For å gjøre det så enkelt som mulig er det opprettet 2 tabeller, 1 med oppskrifter og 1 med ingredienser. 
+
+Det aller første vi trenger er noen databasemodeller. Altså typer som sier hvordan dataen vår faktisk ser ut i databasen. Denne typen må matche den tabellen den tilhører.
+Vi kan ikke bruke domene-modellene våre til dette da disse modellene er forskjellige.
+Det vi også kommer til å trenge er funksjoner som konverterer mellom de forskjellige modell-typene.
+
+Vi starter med databasemodellene våre:
+For oppskrift
+```fsharp
+// Databasemodell
 [<CLIMutable>]
 type RecipeDbModel =
     { Id: string
@@ -72,27 +96,8 @@ type RecipeDbModel =
       Time: float
       Steps: string array
       Portions: int }
-``
 
-Og ingrediensene slik:
-```fsharp
-[<CLIMutable>]
-type IngredientDbModel =
-    { Volume: float
-      Measurement: string
-      Name: string
-      Recipe: string }
-```
-
-Vi trenger også å koble oss til databasen og lage en referanse til tabellene i koden vår.
-```fsharp
-let connection = new NpgsqlConnection(connectionString)
-let recipeTable = table'<RecipeDbModel> "Recipe"
-let ingredientTable = table'<IngredientDbModel> "Ingredient"
-```
-
-Noe vi også trenger er funksjoner for å konvertere domenemodellene våre til databasemodeller og tilbake.
-```fsharp
+// Domene til databasemodell
 let private recipeToDb (recipe: Recipe) =
     { Id = recipe.Id.ToString()
       Title = recipe.Title
@@ -102,6 +107,7 @@ let private recipeToDb (recipe: Recipe) =
       Steps = List.toArray recipe.Steps
       Portions = recipe.Portions }
 
+// Database til domenemodell
 let private recipeDbToDomain (recipe: RecipeDbModel) ingredients =
     { Id = Guid.Parse(recipe.Id)
       Title = recipe.Title
@@ -111,22 +117,33 @@ let private recipeDbToDomain (recipe: RecipeDbModel) ingredients =
       Steps = Array.toList recipe.Steps
       Ingredients = ingredients
       Portions = recipe.Portions }
+```
 
+For ingredienser:
+```fsharp
+// Databasemodell
+[<CLIMutable>]
+type IngredientDbModel =
+    { Volume: float
+      Measurement: string
+      Recipe: string // Fremmednøkkel til oppskrift }
+
+// Domene til databasemodell
 let private ingredientToDb (ingredient: Ingredient) recipeId =
     { Volume = ingredient.Volume
       Measurement = ingredient.Measurement |> measurementToString
       Name = ingredient.Name
       Recipe = recipeId }
 
+// Database til domenemodell
 let private ingredientDbToDomain (ingredient: IngredientDbModel) =
     { Volume = ingredient.Volume
       Measurement = stringToMeasurement ingredient.Measurement
       Name = ingredient.Name }
 ```
 
-Dette er noen linjer med kode, men er veldig rett frem. Det er funksjoner som tar inn en type, databasemodell f.eks og gjør den om til en DB-modell.
-
 Vi kan også lage en liten hjelpefunksjon som tar inn en oppskrift of spytter ut databasemodeller til både oppskrifter og ingredienser.
+Når vi nå skal legge til en ny oppskrift har vi kun en funksjon vi trenger å kalle.
 ```fsharp
 let private recipeToDbModels recipe =
     let recipeToInsert = recipeToDb recipe
@@ -138,11 +155,19 @@ let private recipeToDbModels recipe =
     recipeToInsert, ingredientsToInsert
 ```
 
+Nå som modellene og hjelpefunksjonene våre er klare kan vi koble oss til databasen.
+Vi lager tabellene våre i samme slengen så alt er klart til å brukes
+```fsharp
+let connection = new NpgsqlConnection(connectionString)
+let recipeTable = table'<RecipeDbModel> "Recipe"
+let ingredientTable = table'<IngredientDbModel> "Ingredient"
+```
+
 ## Slafs: Database time
-Vi kan starte med å hente ut alle oppskriftene våre.
-For å gjøre det så endrer vi `getAllRecipes` funksjonen.
-Det vi trenger å gjøre der er å hente alle oppskriftene, så hente alle ingrediensene.
-Så må vi mappe over alle oppskriftene og knytte dem sammen med ingrediensene som tilhører dem.
+La oss starte med å hente ut alle oppskriftene våre. Slett hele fakbase, in-memory databasen, vi hadde fra før.
+Vi lager en ny funksjon som også heter `getAllRecipes` funksjonen.
+Det vi trenger å gjøre der er å hente alle oppskriftene og alle ingrediensene.
+Så bruker vi `Recipe` stringen og mapper over alle oppskriftene og ingrediensene og lager domene modeller ut av dem.
 
 ```fsharp
 let getAllRecipes () =
@@ -178,3 +203,119 @@ let getAllRecipes () =
 
         return recipeDomainModels
 ```
+
+Neste funksjon blir å legge til nye oppskrifter.
+Her tar vi inn en oppskrift og kaller `recipeToDbModels` funksjonen vår.
+Da får vi alle oppskriftene og ingrediensene våre. De inserter vi rett inn i databasen.
+`addRecipe` blir da:
+```fsharp
+let addRecipe newRecipe =
+    task {
+        let recipeToInsert, ingredientsToInsert = recipeToDbModels newRecipe
+
+        // Legg inn alle oppskriftene
+        let! insertedRecipe =
+            insert {
+                into recipeTable
+                value recipeToInsert
+            }
+            |> connection.InsertAsync
+
+        printfn $"Inserted {insertedRecipe} recipe(s)"
+
+        // Legg inn alle ingrediensene
+        let! insertedIngredients =
+            insert {
+                into ingredientTable
+                values ingredientsToInsert
+            }
+            |> connection.InsertAsync
+
+        printfn $"Inserted {insertedIngredients} ingredient(s)"
+    }
+```
+
+Når det kommer til å oppdatere oppskrifter så starter vi med å oppdatere selve oppskriften,
+Deretter sletter vi alle ingrediense og legger de til på nytt.
+Shazam! Oppdatert oppskrift.
+```fsharp
+let updateRecipe recipeToUpdate =
+    task {
+        let recipeToUpdate, ingredientsToUpdate = recipeToDbModels recipeToUpdate
+
+        let! updatedRecipe =
+            update {
+                for r in recipeTable do
+                    set recipeToUpdate
+                    where (r.Id = recipeToUpdate.Id)
+            }
+            |> connection.UpdateAsync
+
+        printfn $"Updated {updatedRecipe} recipe(s)"
+
+        // For å oppdatere alle ingrediense så sletter vi de gamle og inserter de nye
+        let! deletedIngredients =
+            delete {
+                for i in ingredientTable do
+                    where (i.Recipe = recipeToUpdate.Id)
+            }
+            |> connection.DeleteAsync
+
+        printfn $"Deleted {deletedIngredients} ingredients."
+
+        let! insertedIngredients =
+            insert {
+                into ingredientTable
+                values ingredientsToUpdate
+            }
+            |> connection.InsertAsync
+
+        printfn $"Inserted {insertedIngredients} ingredient(s)"
+    }
+```
+
+Avslutningsvis trenger vi bare å slette basert oppskrifter og ingredienser basert på de IDene vi har.
+Ez pz
+```fsharp
+let deleteRecipe (id: Guid) =
+    task {
+        let id = id.ToString()
+
+        let! ingredientsDeleted =
+            delete {
+                for i in ingredientTable do
+                    where (i.Recipe = id)
+            }
+            |> connection.DeleteAsync
+
+        printfn $"Deleted {ingredientsDeleted} ingredient(s)"
+
+        let! recipeDeleted =
+            delete {
+                for r in recipeTable do
+                    where (r.Id = id)
+            }
+            |> connection.DeleteAsync
+
+        printfn $"Deleted {recipeDeleted} recipe(s)"
+    }
+```
+
+Litt kjedelig å skrive "enkle" CRUD funksjoner.
+Men det er også veldig enkelt å skrive disse i F# og det er enkelt å knytte dem sammen med Giraffe på den måten.
+
+## Fin
+
+Og med det er vi ferdig med SLAFS.
+Det var en digg reise.
+
+Og vi har lært en masse greier!
+Vi kan masse om F# syntax og om typesystemet.
+Deretter satte vi opp en enkelt backend med Giraffe og en enkel in memory database så vi kunne kjøre noen enkle requests.
+Så skrev vi en enkel frontend med F# og React hvor vi hentet informasjon fra backenden vår.
+Og tilslutt byttet vi ut in memory databasen med en enkel PostgreSQL database hvor vi bruke Dapper og knyttet den sammen med Giraffe.
+
+Nå som vi har brukt F# litt og vet hva det kan brukes til skal vi fortsette å se på spennende temaer fremover.
+Neste gang skal vi se på hvordan man kan starte å bruke F# i et vanlig JavaScript prosjekt.
+Det blir bra!
+
