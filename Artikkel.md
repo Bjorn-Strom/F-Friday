@@ -9,20 +9,17 @@ Lenker til tidligere artikler:
 - Del 4: [Frontent og React](https://blogg.bekk.no/f-friday-4-frontend-og-react-c356d34a6095)
 - **Del 5: Databaser**
 
-[Forrige gang](https://blogg.bekk.no/f-friday-4-frontend-og-react-c356d34a6095) laget vi en enkelt frontend i react som kunne snakke med backenden vår. Når vi først lagde backenden vår brukte vi et dictionary til å holde på alle oppskriftene våre. Denne gangen skal vi bytte ut denne in-memory databasen med PostgreSQL.
-
-## Dagens plan
-Vi skal starte gildet med å se på noen av de mange databasemuligheter som finnes til F# før vi bruker `Dapper` til å implementere funksjonaliteten vi trenger for å oppdatere oppskriftene våre.
+[Forrige gang](https://blogg.bekk.no/f-friday-4-frontend-og-react-c356d34a6095) lagde vi en enkelt frontend i Feliz som kunne snakke med backenden vår. Når vi først lagde backenden vår for en stund siden valgte vi å brukte vi et dictionary til å holde på alle oppskriftene våre. Denne gangen skal vi bytte ut denne in-memory databasen med PostgreSQL.
 
 ## Verktøy
-I C# bruker man, i min erfaring, Entity Framework (EF) og selv om det funker greit nok er det jo flott å ha noen alternativer.
+F# har ganske mange forskjellige verktøy man kan bruke for å jobbe med databaser. De som kommer under er de jeg selv har erfaring med, men du kan godt google litt om du vil ha enda flere alternativer.
 
-F# har en del spennende valgalternativer og under er en liten liste med de jeg har erfaring med:
 - [SqlProvider](https://github.com/fsprojects/SQLProvider) - Genererer typer fra databasen din mens du programmerer. Det betyr at koden din ikke vil kompilere dersom du har skrevet feil SQL. Behøver en aktiv tilgang til din database for å bygge koden din, som kan være litt irriterende.
-- [RepoDb](https://github.com/mikependon/RepoDB) - Gir et EF lignende API.
+- [Entity Framework]()(EF) - Selv om EF er mest kjent som et C# bibliotek fungerer det i F# også, men det er ikke like ergonomisk å jobbe med som noen av alternativene.
+- [RepoDb](https://github.com/mikependon/RepoDB) - Gir et enklere EF lignende API.
 - [Dapper.FSharp](https://github.com/Dzoukr/Dapper.FSharp) - En lettvekts wrapper på Dapper som gjør det enkelt å bruke Dapper med Giraffe.
 
-Det finnes flere også så om man er interessert er det bare å google litt så kommer det masse forslag.
+Vi kommer til å bruke Dapper i Slafs da det er veldig enkelt å komme igang med og passer veldig bra sammen med Giraffe.
 
 ## Dapper
 [Dapper](https://github.com/DapperLib/Dapper) er, som de selv sier, en "simple object mapper for .Net". Det er en lettvekts måte å kommunisere med databaser på.
