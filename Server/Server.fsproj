@@ -10,7 +10,7 @@
     <Compile Include="Server.fs" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Dapper.FSharp" Version="3.1.0" />
+    <PackageReference Include="dapper" Version="2.0.123" />
     <PackageReference Include="Giraffe" Version="5.0.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
     <PackageReference Include="RepoDb.PostgreSql" Version="1.1.5-beta1 " />

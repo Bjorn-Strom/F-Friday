@@ -1,12 +1,12 @@
 module Database
 
-open Shared
-
 open System
-open Dapper.FSharp
-open Dapper.FSharp.PostgreSQL
+open Dapper
 open Npgsql
 
+open Shared
+
+// Bare no ræl for å parse database url vi får fra heroku
 let connectionString =
     let credentials =
         let databaseUrl =
@@ -26,9 +26,26 @@ let connectionString =
            Port = hostPort.Split(":")[1] |}
 
     $"User ID={credentials.User};Password={credentials.Password};Host={credentials.Host};Port={credentials.Port};Database={credentials.Database};Pooling=true;SSL Mode=Require;TrustServerCertificate=True;"
-
-let connection = new NpgsqlConnection(connectionString)
-
+    
+let createConnection () =
+    let connection = new NpgsqlConnection(connectionString)
+    connection.Open()
+    connection
+    
+let cleanupConnection (connection: NpgsqlConnection) =
+    connection.Close()
+    connection.Dispose()
+    
+let createTransaction () =
+    let connection = createConnection ()
+    let transaction = connection.BeginTransaction()
+    
+    transaction
+    
+let cleanupTransaction (transaction: NpgsqlTransaction) =
+    cleanupConnection transaction.Connection
+    transaction.Dispose()
+    
 [<CLIMutable>]
 type RecipeDbModel =
     { Id: string
@@ -45,9 +62,6 @@ type IngredientDbModel =
       Measurement: string
       Name: string
       Recipe: string }
-
-let recipeTable = table'<RecipeDbModel> "Recipe"
-let ingredientTable = table'<IngredientDbModel> "Ingredient"
 
 let private recipeToDb (recipe: Recipe) =
     { Id = recipe.Id.ToString()
@@ -87,117 +101,223 @@ let private recipeToDbModels recipe =
         |> List.map (fun i -> ingredientToDb i recipeToInsert.Id)
 
     recipeToInsert, ingredientsToInsert
+    
+let private recipeAndIngredientDbModelsToDomain recipes ingredients =
+     recipes
+     |> List.map
+        (fun r ->
+            let ingredientsForRecipe =
+                ingredients
+                |> List.filter (fun i -> i.Recipe = r.Id)
+                |> List.map ingredientDbToDomain
 
+            recipeDbToDomain r ingredientsForRecipe)
+    
 let getAllRecipes () =
     task {
-        let! recipeDbModels =
-            select {
-                for r in recipeTable do
-                    selectAll
-            }
-            |> connection.SelectAsync<RecipeDbModel>
+        let transaction = createTransaction ()
+        let recipes =
+            let query =
+                "
+                SELECT * FROM
+                Recipe
+                "
+            try
+                transaction.Connection.Query<RecipeDbModel>(query)
+                |> Seq.toList
+                |> Ok
+            with
+                | ex -> Error ex.Message
+                
 
-        let! ingredientDbModels =
-            select {
-                for i in ingredientTable do
-                    selectAll
-            }
-            |> connection.SelectAsync<IngredientDbModel>
+        let ingredients =
+            let query =
+                "
+                SELECT * FROM
+                Ingredient
+                "
+            try
+                transaction.Connection.Query<IngredientDbModel>(query)
+                |> Seq.toList
+                |> Ok
+            with
+                | ex -> Error ex.Message
+                
+        cleanupTransaction transaction
+                
+        return
+            match recipes, ingredients with
+            | Ok recipes, Ok ingredients ->
+                let recipeDomainModels = recipeAndIngredientDbModelsToDomain recipes ingredients
 
-        let recipeDomainModels =
-            Seq.map
-                (fun r ->
-                    let ingredientsForRecipe =
-                        ingredientDbModels
-                        |> Seq.filter (fun i -> i.Recipe = r.Id)
-                        |> Seq.map ingredientDbToDomain
-                        |> Seq.toList
+                printfn $"Got {List.length recipeDomainModels} recipe(s)"
 
-                    recipeDbToDomain r ingredientsForRecipe)
-                recipeDbModels
-            |> Seq.toList
-
-        printfn $"Got {List.length recipeDomainModels} recipe(s)"
-
-        return recipeDomainModels
+                Ok recipeDomainModels
+            | Error recipeError, Ok _ -> Error $"Feil under henting av oppskrifter: {recipeError}"
+            | Ok _, Error ingredientError ->  Error $"Feil under henting av ingredienser: {ingredientError}"
+            | Error recipeError, Error ingredientError ->
+                [
+                    $"Feil under henting av oppskrifter: {recipeError}."
+                    $"Feil under henting av ingredienser: {ingredientError}."
+                ]
+                |> String.concat ""
+                |> Error
     }
-
+    
 let addRecipe newRecipe =
     task {
         let recipeToInsert, ingredientsToInsert = recipeToDbModels newRecipe
+        let recipeQuery =
+            "
+            INSERT INTO Recipe (id, description, meal, portions, steps, title, time)
+            VALUES (@id, @description, @meal, @portions, @steps, @title, @time)
+            RETURNING *;
+            "
+        let recipeParameters = dict [
+            "id", box recipeToInsert.Id
+            "description", box recipeToInsert.Description
+            "meal", box recipeToInsert.Meal
+            "portions", box recipeToInsert.Portions
+            "steps", box recipeToInsert.Steps
+            "title", box recipeToInsert.Title
+            "time", box recipeToInsert.Time
+        ]
+        
+        let ingredientParameters = DynamicParameters()
 
-        let! insertedRecipe =
-            insert {
-                into recipeTable
-                value recipeToInsert
-            }
-            |> connection.InsertAsync
-
-        printfn $"Inserted {insertedRecipe} recipe(s)"
-
-        let! insertedIngredients =
-            insert {
-                into ingredientTable
-                values ingredientsToInsert
-            }
-            |> connection.InsertAsync
-
-        printfn $"Inserted {insertedIngredients} ingredient(s)"
+        let ingredientValues =
+            ingredientsToInsert
+            |> List.mapi (fun i ingredient ->
+                ingredientParameters.Add($"volume{i}", ingredient.Volume)
+                ingredientParameters.Add($"measurement{i}", ingredient.Measurement)
+                ingredientParameters.Add($"name{i}", ingredient.Name)
+                ingredientParameters.Add($"recipe{i}", ingredient.Recipe)
+                $"(@volume{i}, @measurement{i}, @name{i}, @recipe{i})")
+        
+        let ingredientQuery =
+            $"""
+            INSERT INTO Ingredient (volume, measurement, name, recipe)
+            VALUES {String.concat "," ingredientValues}
+            RETURNING *;
+            """
+        
+        let transaction = createTransaction ()
+        let result =
+            try
+                let recipe = transaction.Connection.Query<RecipeDbModel>(recipeQuery, recipeParameters, transaction) |> Seq.toList
+                let ingredients = transaction.Connection.Query<IngredientDbModel>(ingredientQuery, ingredientParameters, transaction) |> Seq.toList
+                transaction.Commit()
+                recipeAndIngredientDbModelsToDomain recipe ingredients
+                |> List.head
+                |> Ok
+            with
+                | ex ->
+                    transaction.Rollback()
+                    Error ex.Message
+                    
+        cleanupTransaction transaction
+                    
+        return result
     }
-
 let updateRecipe recipeToUpdate =
     task {
         let recipeToUpdate, ingredientsToUpdate = recipeToDbModels recipeToUpdate
+        let recipeQuery =
+            "
+            UPDATE Recipe
+            SET description = @description,
+                meal = @meal,
+                portions = @portions,
+                steps = @steps,
+                title = @title,
+                time = @time
+            WHERE id = @id
+            RETURNING *;
+            "
+            
+        printfn "RECIPE QWUERY: %A" recipeQuery
+            
+        let recipeParameters = dict [
+            "id", box recipeToUpdate.Id
+            "description", box recipeToUpdate.Description
+            "meal", box recipeToUpdate.Meal
+            "portions", box recipeToUpdate.Portions
+            "steps", box recipeToUpdate.Steps
+            "title", box recipeToUpdate.Title
+            "time", box recipeToUpdate.Time
+        ]
+        
+        let ingredientParameters = DynamicParameters()
 
-        let! updatedRecipe =
-            update {
-                for r in recipeTable do
-                    set recipeToUpdate
-                    where (r.Id = recipeToUpdate.Id)
-            }
-            |> connection.UpdateAsync
-
-        printfn $"Updated {updatedRecipe} recipe(s)"
-
-        // For å oppdatere alle ingrediense så sletter vi de gamle og inserter de nye
-        let! deletedIngredients =
-            delete {
-                for i in ingredientTable do
-                    where (i.Recipe = recipeToUpdate.Id)
-            }
-            |> connection.DeleteAsync
-
-        printfn $"Deleted {deletedIngredients} ingredients."
-
-        let! insertedIngredients =
-            insert {
-                into ingredientTable
-                values ingredientsToUpdate
-            }
-            |> connection.InsertAsync
-
-        printfn $"Inserted {insertedIngredients} ingredient(s)"
+        let ingredientValues =
+            ingredientsToUpdate
+            |> List.mapi (fun i ingredient ->
+                ingredientParameters.Add($"volume{i}", ingredient.Volume)
+                ingredientParameters.Add($"measurement{i}", ingredient.Measurement)
+                ingredientParameters.Add($"name{i}", ingredient.Name)
+                ingredientParameters.Add($"recipe{i}", ingredient.Recipe)
+                $"(@volume{i}, @measurement{i}, @name{i}, @recipe{i})")
+        ingredientParameters.Add("recipe", recipeToUpdate.Id)
+            
+        let ingredientQuery =
+            $"""
+            DELETE FROM Ingredient
+            WHERE Recipe = @recipe;
+            
+            INSERT INTO Ingredient (volume, measurement, name, recipe)
+            VALUES {String.concat "," ingredientValues}
+            RETURNING *;
+            """
+            
+        printfn "INGREDIE    QWUERY: %A" ingredientQuery
+            
+        let transaction = createTransaction ()
+        let result =
+            try
+                let recipe = transaction.Connection.Query<RecipeDbModel>(recipeQuery, recipeParameters, transaction) |> Seq.toList
+                let ingredients = transaction.Connection.Query<IngredientDbModel>(ingredientQuery, ingredientParameters, transaction) |> Seq.toList
+                transaction.Commit()
+                recipeAndIngredientDbModelsToDomain recipe ingredients
+                |> List.head
+                |> Ok
+            with
+                | ex ->
+                    transaction.Rollback()
+                    Error ex.Message
+                    
+        cleanupTransaction transaction
+        
+        return result
     }
 
 let deleteRecipe (id: Guid) =
     task {
-        let id = id.ToString()
+        let query =
+            "
+            DELETE FROM
+            Ingredient
+            WHERE recipe = @recipeId;
+            
+            DELETE FROM
+            Recipe
+            WHERE id = @recipeId; 
+            "
+            
+        let parameters = dict [
+            "recipeId", box (id.ToString())
+        ]
+        
+        let connection = createConnection ()
+        let result =
+            try
+                connection.Execute(query, parameters) |> ignore
+                Ok ()
+            with
+                | ex ->
+                    Error ex.Message
+                    
+        cleanupConnection connection
+        
+        return result
 
-        let! ingredientsDeleted =
-            delete {
-                for i in ingredientTable do
-                    where (i.Recipe = id)
-            }
-            |> connection.DeleteAsync
-
-        printfn $"Deleted {ingredientsDeleted} ingredient(s)"
-
-        let! recipeDeleted =
-            delete {
-                for r in recipeTable do
-                    where (r.Id = id)
-            }
-            |> connection.DeleteAsync
-
-        printfn $"Deleted {recipeDeleted} recipe(s)"
     }

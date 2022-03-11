@@ -180,11 +180,11 @@ export function stringToMeal(_arg1) {
         case "Dinner": {
             return new Meal(2);
         }
-        case "Dessert": {
+        case "Desert": {
             return new Meal(3);
         }
         default: {
-            throw (new MatchFailureException("/Users/bjornivarstrom/Documents/functional/RecipeTracker/Shared/Shared.fs", 84, 4));
+            throw (new MatchFailureException("/Users/bjornivar/Documents/Functional/F-Friday/Shared/Shared.fs", 84, 4));
         }
     }
 }

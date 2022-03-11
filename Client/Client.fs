@@ -11,7 +11,9 @@ open Types
 open Store
 
 
-let baseUrl =  "https://slafs.herokuapp.com/"// "http://localhost:80/"
+let baseUrl =
+    "https://slafs.herokuapp.com/"
+//    "http://localhost:80/"
 
 // Fonts
 let headingFont = FontFamily.custom "Nunito"
