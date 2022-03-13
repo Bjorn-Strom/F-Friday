@@ -183,29 +183,24 @@ let addRecipe newRecipe =
             "time", box recipeToInsert.Time
         ]
         
-        let ingredientParameters = DynamicParameters()
-
-        let ingredientValues =
-            ingredientsToInsert
-            |> List.mapi (fun i ingredient ->
-                ingredientParameters.Add($"volume{i}", ingredient.Volume)
-                ingredientParameters.Add($"measurement{i}", ingredient.Measurement)
-                ingredientParameters.Add($"name{i}", ingredient.Name)
-                ingredientParameters.Add($"recipe{i}", ingredient.Recipe)
-                $"(@volume{i}, @measurement{i}, @name{i}, @recipe{i})")
-        
-        let ingredientQuery =
-            $"""
+        let insertIngredientQuery =
+            "
             INSERT INTO Ingredient (volume, measurement, name, recipe)
-            VALUES {String.concat "," ingredientValues}
-            RETURNING *;
-            """
+            VALUES (@volume, @measurement, @name, @recipe)
+            "
+        let getIngredientsQuery =
+            "
+            SELECT * FROM Ingredient
+            WHERE Recipe = @recipe;
+            "
+        let ingredientRecipeIdParameters = dict [ "recipe", box recipeToInsert.Id ]
         
         let transaction = createTransaction ()
         let result =
             try
                 let recipe = transaction.Connection.Query<RecipeDbModel>(recipeQuery, recipeParameters, transaction) |> Seq.toList
-                let ingredients = transaction.Connection.Query<IngredientDbModel>(ingredientQuery, ingredientParameters, transaction) |> Seq.toList
+                transaction.Connection.Execute(insertIngredientQuery, ingredientsToInsert, transaction) |> ignore
+                let ingredients = transaction.Connection.Query<IngredientDbModel>(getIngredientsQuery, ingredientRecipeIdParameters, transaction) |> Seq.toList
                 transaction.Commit()
                 recipeAndIngredientDbModelsToDomain recipe ingredients
                 |> List.head
