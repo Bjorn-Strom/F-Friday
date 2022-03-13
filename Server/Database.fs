@@ -235,8 +235,6 @@ let updateRecipe recipeToUpdate =
             RETURNING *;
             "
             
-        printfn "RECIPE QWUERY: %A" recipeQuery
-            
         let recipeParameters = dict [
             "id", box recipeToUpdate.Id
             "description", box recipeToUpdate.Description
@@ -247,35 +245,30 @@ let updateRecipe recipeToUpdate =
             "time", box recipeToUpdate.Time
         ]
         
-        let ingredientParameters = DynamicParameters()
-
-        let ingredientValues =
-            ingredientsToUpdate
-            |> List.mapi (fun i ingredient ->
-                ingredientParameters.Add($"volume{i}", ingredient.Volume)
-                ingredientParameters.Add($"measurement{i}", ingredient.Measurement)
-                ingredientParameters.Add($"name{i}", ingredient.Name)
-                ingredientParameters.Add($"recipe{i}", ingredient.Recipe)
-                $"(@volume{i}, @measurement{i}, @name{i}, @recipe{i})")
-        ingredientParameters.Add("recipe", recipeToUpdate.Id)
-            
-        let ingredientQuery =
-            $"""
+        let deleteIngredientsQuery =
+            "
             DELETE FROM Ingredient
             WHERE Recipe = @recipe;
-            
+            "
+        let insertIngredientQuery =
+            "
             INSERT INTO Ingredient (volume, measurement, name, recipe)
-            VALUES {String.concat "," ingredientValues}
-            RETURNING *;
-            """
-            
-        printfn "INGREDIE    QWUERY: %A" ingredientQuery
+            VALUES (@volume, @measurement, @name, @recipe)
+            "
+        let getIngredientsQuery =
+            "
+            SELECT * FROM Ingredient
+            WHERE Recipe = @recipe;
+            "
+        let ingredientRecipeIdParameters = dict [ "recipe", box recipeToUpdate.Id ]
             
         let transaction = createTransaction ()
         let result =
             try
                 let recipe = transaction.Connection.Query<RecipeDbModel>(recipeQuery, recipeParameters, transaction) |> Seq.toList
-                let ingredients = transaction.Connection.Query<IngredientDbModel>(ingredientQuery, ingredientParameters, transaction) |> Seq.toList
+                transaction.Connection.Execute(deleteIngredientsQuery, ingredientRecipeIdParameters, transaction) |> ignore
+                transaction.Connection.Execute(insertIngredientQuery, ingredientsToUpdate, transaction) |> ignore
+                let ingredients = transaction.Connection.Query<IngredientDbModel>(getIngredientsQuery, ingredientRecipeIdParameters, transaction) |> Seq.toList
                 transaction.Commit()
                 recipeAndIngredientDbModelsToDomain recipe ingredients
                 |> List.head
