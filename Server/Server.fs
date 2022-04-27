@@ -33,7 +33,6 @@ let configureApp (app : IApplicationBuilder) =
 let configureServices (services : IServiceCollection) =
     services.AddCors() |> ignore
     services.AddGiraffe() |> ignore
-    services.AddSingleton<Json.ISerializer> (Thoth.Json.Giraffe.ThothSerializer (caseStrategy = CamelCase)) |> ignore
 
 let tryGetEnv = Environment.GetEnvironmentVariable >> function null | "" -> None | x -> Some x
 let port = "PORT" |> tryGetEnv |> Option.map uint16 |> Option.defaultValue 80us

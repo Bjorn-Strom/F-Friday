@@ -1,54 +1,70 @@
 module Database
 
+open Types
 open Shared
 
-// Alt dette skal vi erstatte med en database senere
-
 type Fakabase () =
-    let recipes = System.Collections.Generic.Dictionary<System.Guid, Recipe>()
+    let recipes = System.Collections.Generic.Dictionary<System.Guid, RecipeDbModel * IngredientDbModel list>()
 
     member __.GetRecipes () =
         List.ofSeq recipes.Values
         
-    member __.AddRecipe (newRecipe: Recipe) = 
-        recipes.Add(newRecipe.Id, newRecipe)
+    member __.AddRecipe (newRecipe: RecipeDbModel) (ingredients: IngredientDbModel list) = 
+        recipes.Add(newRecipe.Id, (newRecipe, ingredients))
+        List.ofSeq recipes.Values
 
-    member __.UpdateRecipe (recipeToUpdate: Recipe) =
-        recipes.[recipeToUpdate.Id] <- recipeToUpdate
+    member __.UpdateRecipe (recipeToUpdate: RecipeDbModel) (ingredients: IngredientDbModel list) =
+        recipes.[recipeToUpdate.Id] <- (recipeToUpdate, ingredients)
+        recipes.[recipeToUpdate.Id]
 
     member __.DeleteRecipe (recipeId: System.Guid) =
         recipes.Remove(recipeId) |> ignore
 
 
 let fakabase = Fakabase()
-fakabase.AddRecipe 
-    (createRecipe 
-         "Kokt potet"
-         "En skikkelig, potensielt smakløs, klassiker som du som inngår i ganske mange andre retter."
-         Dinner
-         20.
-         [ "Skrubb og skyll potetene"
-           "Del potetene i 2"
-           "Kok dem i 10-15 minutter til de er gjennomkokte" ]
-         [ ingredient 800. G "Potet"
-           ingredient 1. L "Vann"
-           ingredient 1. Ts "Salt" ]
-         4)
-fakabase.AddRecipe 
-        (createRecipe
-            "Koteletter med kokt potet"
-            "Oi oi oi så hærlig"
-            Dinner
-            5.
-            [  "Grill kotelettene i 3-4 minutt på hver side, dryss med salt og pepper"
-            ] 
-            [ ingredient 1. Ts "Salt"; ingredient 0.5 Ts "Pepper"; ingredient 4. Stk "Kotelett" ]
-            4)
+let newGuid = System.Guid.NewGuid()
+fakabase.AddRecipe
+    {
+        Id = newGuid
+        Title = "Kokt potet"
+        Description = "En skikkelig, potensielt smakløs, klassiker som du som inngår i ganske mange andre retter."
+        Meal = Dinner
+        Time = 20.
+        Steps =
+            [| "Skrubb og skyll potetene"
+               "Del potetene i 2"
+               "Kok dem i 10-15 minutter til de er gjennomkokte" |]
+        Portions = 4
+        }
+    [
+        { Volume = 800.; Measurement = G; Name = "Potet"; RecipeId = newGuid  }
+        { Volume = 1.; Measurement = L; Name = "Vann"; RecipeId = newGuid  }
+        { Volume = 800.; Measurement = Ts; Name = "Salt"; RecipeId = newGuid  }
+    ] |> ignore
+     
+let newGuid2 = System.Guid.NewGuid()
+fakabase.AddRecipe
+    {
+        Id = newGuid2
+        Title = "Koteletter med kokt potet"
+        Description = "Oi oi oi så hærlig"
+        Meal = Dinner
+        Time = 5.
+        Steps =
+            [|  "Grill kotelettene i 3-4 minutt på hver side, dryss med salt og pepper" |] 
+        Portions = 4
+        }
+    [
+        { Volume = 1.; Measurement = Ts; Name = "Salt"; RecipeId = newGuid2  }
+        { Volume = 0.5; Measurement = Ts; Name = "Pepper"; RecipeId = newGuid2  }
+        { Volume = 4.; Measurement = Stk; Name = "Kotelett"; RecipeId = newGuid2  }
+    ] |> ignore
 
 let getAllRecipes () = fakabase.GetRecipes ()
-let addRecipe newRecipe =
-    fakabase.AddRecipe newRecipe
-let updateRecipe recipeToUpdate =
-    fakabase.UpdateRecipe recipeToUpdate
+let addRecipe recipe ingredients =
+    fakabase.AddRecipe recipe ingredients
+let updateRecipe recipe ingredients =
+    fakabase.UpdateRecipe recipe ingredients
 let deleteRecipe id =
     fakabase.DeleteRecipe id
+    
