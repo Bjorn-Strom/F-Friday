@@ -29,27 +29,17 @@ let measurementToString =
 
 let stringToMeasurement =
   function
-  | "Kg"  -> Kg
-  | "G"   -> G
-  | "Mg"  -> Mg
-  | "L"   -> L
-  | "Dl"  -> Dl
-  | "Ml"  -> Ml
-  | "Ms"  -> Ms
-  | "Ss"  -> Ss
-  | "Ts"  -> Ts
-  | "Stk" -> Stk
-  | _     -> Stk
-
-type Ingredient =
-    { Volume: float
-      Measurement: Measurement
-      Name: string }
-
-let ingredient volume measurement name =
-    { Volume = volume
-      Measurement = measurement
-      Name = name }
+  | "Kg"  -> Some Kg
+  | "G"   -> Some G
+  | "Mg"  -> Some Mg
+  | "L"   -> Some L
+  | "Dl"  -> Some Dl
+  | "Ml"  -> Some Ml
+  | "Ms"  -> Some Ms
+  | "Ss"  -> Some Ss
+  | "Ts"  -> Some Ts
+  | "Stk" -> Some Stk
+  | _     -> None
 
 type Meal =
     | Breakfast
@@ -72,34 +62,16 @@ let mealToNorwegian meal =
 
 let norwegianToMeal name =
     match name with
-    | "Frokost" -> Breakfast
-    | "Lunsj" -> Lunch
-    | "Middag" -> Dinner
-    | "Dessert" -> Desert
-    | _ -> Dinner
-
-type Recipe =
-    { Id: System.Guid
-      Title: string
-      Description: string
-      Meal: Meal
-      Time: float
-      Steps: string list
-      Ingredients: Ingredient list
-      Portions: int
-    }
-
-let createRecipe title description meal time steps ingredients portions =
-    { Id = System.Guid.NewGuid()
-      Title = title
-      Description = description
-      Meal = meal
-      Time = time
-      Steps = steps
-      Ingredients = ingredients
-      Portions = portions }
-
-[<RequireQualifiedAccess>]
-module List =
-  let replaceIndex index newItem list =
-    List.mapi (fun currentIndex oldItem -> if currentIndex = index then newItem else oldItem) list
+    | "Frokost" -> Some Breakfast
+    | "Lunsj" -> Some Lunch
+    | "Middag" -> Some Dinner
+    | "Dessert" -> Some Desert
+    | _ -> None
+    
+let stringToMeal name =
+    match name with
+    | "Breakfast" -> Some Breakfast
+    | "Lunch" -> Some Lunch
+    | "Dinner" -> Some Dinner
+    | "Desert" -> Some Desert
+    | _ -> None

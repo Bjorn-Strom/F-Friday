@@ -57,7 +57,7 @@ let Button (text: string) onClick backgroundColor color =
 
 [<ReactComponent>]
 let Menu () =
-    let (_, dispatch) = useStore()
+    let _, dispatch = useStore()
     Html.nav [
         prop.fss [
             BackgroundColor' green
@@ -170,7 +170,7 @@ let Homeview() =
 
 [<ReactComponent>]
 let MealView meal setRecipeView =
-    let (state, _) = useStore()
+    let state, _ = useStore()
     match state.Recipes with
     | Data recipes ->
         Html.div [
@@ -191,15 +191,17 @@ let MealView meal setRecipeView =
 
 [<ReactComponent>]
 let NewRecipeView () =
-    let (_, dispatch) = useStore()
+    let _, dispatch = useStore()
 
-    let (title, setTitle) = React.useState ""
-    let (description, setDescription) = React.useState ""
-    let (meal, setMeal) = React.useState Breakfast
-    let (time, setTime) = React.useState 0.
-    let (steps, setSteps) = React.useState<string list> List.empty
-    let (ingredients, setIngredients) = React.useState<Ingredient list> List.empty
-    let (portions, setPortions) = React.useState 0
+    let title, setTitle = React.useState ""
+    let description, setDescription = React.useState ""
+    let meal, setMeal = React.useState Breakfast
+    let time, setTime = React.useState 0.
+    let steps, setSteps = React.useState<string list> List.empty
+    let ingredients, setIngredients = React.useState<Ingredient list> List.empty
+    let portions, setPortions = React.useState 0
+    
+    let recipeId = System.Guid.NewGuid()
 
     let setSteps key value =
         if List.length steps > key then
@@ -216,22 +218,16 @@ let NewRecipeView () =
             setIngredients (ingredients @ [value])
 
     let saveRecipe () =
-        let recipe = createRecipe title description meal time steps ingredients portions
+        let recipe = createRecipe recipeId title description meal time steps ingredients portions
 
         let properties =
             [ RequestProperties.Method HttpMethod.POST
               requestHeaders [ ContentType "application/json" ]
               RequestProperties.Body (unbox(Encode.Auto.toString(4, recipe, caseStrategy = CamelCase))) ]
-        (*
-        fetch "http://0.0.0.0:80/api/recipe" properties
-        |> Promise.map(fun _ ->
-            dispatch (AddRecipe recipe)
-            dispatch (SetCurrentView (RecipeDetails recipe)))
-        |> Promise.start
-        *)
 
         promise {
-            do fetch "http://slafs.herokuapp.com/api/recipe" properties |> ignore
+//            do fetch "http://slafs.herokuapp.com/api/recipe" properties |> ignore
+            do fetch "http://localhost:80/api/recipe" properties |> ignore
             do dispatch (AddRecipe recipe)
             do dispatch (SetCurrentView (RecipeDetails recipe))
         }
@@ -267,7 +263,10 @@ let NewRecipeView () =
                         prop.children ((List.map measurementToString measurementList)
                                        |> List.map (fun n -> Html.option n))
                         prop.value (measurementToString value.Measurement)
-                        prop.onChange (fun m -> setIngredients key {value with Measurement = (stringToMeasurement m) })
+                        prop.onChange (fun m ->
+                            let measurement = stringToMeasurement m
+                            if measurement.IsSome then
+                                setIngredients key {value with Measurement = measurement.Value })
                     ]
                 ]
                 FormElement "Navn" [
@@ -302,7 +301,10 @@ let NewRecipeView () =
                         (mealList
                         |> List.map mealToNorwegian
                         |> List.map (fun m -> Html.option m))
-                    prop.onChange (norwegianToMeal >> setMeal)
+                    prop.onChange (fun m ->
+                                    let meal = norwegianToMeal m
+                                    if meal.IsSome then
+                                        setMeal meal.Value)
                 ]
             ]
             FormElement "Minutter" [
@@ -326,7 +328,7 @@ let NewRecipeView () =
                 (ingredients
                  |> List.mapi (fun key value -> IngredientElement key value))
 
-            Button "Ny ingrediens" (fun _ -> setIngredients (List.length ingredients) (ingredient 0.0 Kg "")) ButtonColor.Green Black
+            Button "Ny ingrediens" (fun _ -> setIngredients (List.length ingredients) (ingredient 0.0 Kg "" recipeId)) ButtonColor.Green Black
 
             FormElement "Porsjoner" [
                 Html.input [
@@ -342,7 +344,7 @@ let NewRecipeView () =
 
 [<ReactComponent>]
 let PageView() =
-    let (state, dispatch) = useStore()
+    let state, dispatch = useStore()
     let setRecipeView recipe = dispatch (SetCurrentView (RecipeDetails recipe))
     let MealView meal = MealView meal setRecipeView
 
@@ -369,14 +371,13 @@ let PageView() =
         ]
     ]
 
-
-
 [<ReactComponent>]
 let Container() =
-    let (state, dispatch) = useStore()
+    let state, dispatch = useStore()
 
-    Hooks.useEffectOnce((fun () ->
-        fetch "http://slafs.herokuapp.com/api/recipes" []
+    Hooks.useEffectOnce(fun () ->
+//        fetch "http://slafs.herokuapp.com/api/recipes" []
+        fetch "http://localhost:80/api/recipes" []
         |> Promise.bind (fun result -> result.text())
         |> Promise.map (fun result -> Decode.Auto.fromString<Recipe list>(result, caseStrategy=CamelCase))
         |> Promise.map (fun result ->
@@ -384,7 +385,7 @@ let Container() =
             | Ok recipes -> Data recipes
             | Error e -> Failure e)
         |> Promise.map (fun r -> dispatch (SetRecipes r))
-        |> Promise.start))
+        |> Promise.start)
 
     match state.Recipes with
     | Fetching -> Html.div [ prop.text "Laster..." ]
