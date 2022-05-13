@@ -7,27 +7,27 @@ Lenker til tidligere artikler:
 - Del 2: [Typesystemet](https://blogg.bekk.no/f-friday-2-typesystemet-3e7ee0554f0e)
 - Del 3: [Backenden](https://blogg.bekk.no/f-friday-3-backend-7463edf0f94a)
 - Del 4: [Frontent og React](https://blogg.bekk.no/f-friday-4-frontend-og-react-c356d34a6095)
-- **Del 5: JSON Dekodere**
+- **Del 5: JSON-Dekodere**
 
 
 [Forrige gang](https://blogg.bekk.no/f-friday-4-frontend-og-react-c356d34a6095) lagde vi en enkel frontend i Feliz som kunne snakke med backenden vår. Når vi først lagde backenden vår for en stund siden valgte vi å brukte et dictionary til å holde på alle oppskriftene våre.
-Denne skal vi bytte ut, men først må vi ta en runde å snakke om JSON dekodere!
+Denne skal vi bytte ut, men først må vi ta en runde å snakke om JSON-dekodere!
 
 ## Dagens mål
 Utviklere elsker å mappe data fra en struktur til en annen. I frontend har vi har kanskje en `viewModel` som blir mappet
 over til en `writeModel` før den sendes backend. I backend blir denne mappet om igjen til en `domainModel` som mappes om til en `dbModel`
 før den skrives til databasen og så til en `viewModel` igjen før det returneres til frontend. Kanskje har vi `create` og `edit` modeller også.
 
-All denne mappingen er stort sett bortkastet og bidrar kun til komplisert kode. Særlig i en applikasjon som SLAFS hvor stort sett gjør CRUD operasjoner.
-Vi skal bruke JSON dekodere og enkodere til å skrive noen enkle funksjoner som erstatter all denne mappingen.
+All denne mappingen er stort sett bortkastet og bidrar kun til komplisert kode. Særlig i en applikasjon som SLAFS hvor det stort sett gjøres CRUD operasjoner.
+Vi skal bruke JSON-dekodere og enkodere til å skrive noen enkle funksjoner som erstatter all denne mappingen.
 Målet vårt er at serveren vår skal ta imot JSON, dekode og validere den, gjøre litt logikk på dataen, skrive den til en database før vi tilslutt enkoder den til et nyttig JSON format og sender det ut igjen.
 
 ## Dekodere? Enkodere?
-Du har kanskje hørt om JSON dekodere fra [Elm](https://package.elm-lang.org/packages/elm/json/latest/Json.Decode), men det finnes også [alternativ](https://github.com/tskj/typescript-json-decoder) som tillater noe lignende i TypeScipt.
+Du har kanskje hørt om JSON-dekodere fra [Elm](https://package.elm-lang.org/packages/elm/json/latest/Json.Decode), men det finnes også [alternativ](https://github.com/tskj/typescript-json-decoder) som tillater noe lignende i TypeScipt.
 Det dekodere tillater oss er å validere at vår JSON har riktig form, riktig innhold, og at den konverteres til riktig data-struktur. 
 
 F# sine dekodere kan man bruke i backend og det er akkurat det vi skal gjøre. Vi skal ta imot en oppskrift som JSON, dekode den om til to databasemodeller som skal lagres.
-Når vi til slutt sender denne dataen ut fra backenden igjen bruker vi JSON enkodere til å produsere den endelige JSONen.
+Når vi til slutt sender denne dataen ut fra backenden igjen bruker vi JSON-enkodere til å produsere den endelige JSONen.
 
 ## La oss dekode
 I F# bruker vi [thoth-json](https://thoth-org.github.io/) til denne jobben.
@@ -37,7 +37,7 @@ La oss si vi har følgende JSON blob å dekode:
     "id": "995d1ad3-123f-499a-95f0-4220027cecc0",
     "bank": "Banknavn",
     "betalingsMetode": "kort",
-    "addresse": "gate 32"
+    "adresse": "gate 32"
 }
 ```
 
@@ -48,11 +48,11 @@ Decode.object (fun get ->
     Id = get.Required.Field "id" Decode.guid
     Bank = get.Required.Field "bank" Decode.string
     BetalingsMetode = get.Required.Field "betalingsMetode" Decode.string
-    Addresse = get.Optional.Field "addresse" Decode.string
+    Adresse = get.Optional.Field "adresse" Decode.string
 })
 ```
 Her sier vi at vi ønsker å dekode til et objekt. Vi trenger å si hva feltene heter, om de er påkrevde og hvilken dekoder vi ønsker å bruke på det feltet.
-Vi ser også at addresse feltet bruker `get.Optional.Field` som betyr at feltet ikke trenger å være definert og blir til en `option` type.
+Vi ser også at adressefeltet bruker `get.Optional.Field` som betyr at feltet ikke trenger å være definert og blir til en `option` type.
 
 Vi kan også bruke dekodere til ekstra validering.
 La oss si vi har følgende type for betalingsmetode:
@@ -84,7 +84,7 @@ Så kan vi bruke den i dekoderen vår:
 
 Nå som vi vet alt om dekoding kan vi ta det i bruk og fikse opp i backenden vår og la oss starte med ingrediensene.
 Fra før av så hadde vi alle typene våre i den delte filen som både frontend og backend brukte. Disse modellene kommer ikke backend lenger til å bruke.
-Derfor har jeg opprettet en egen `Types.fs` fil frontend og flyttet disse typene inn dit. 
+Derfor har jeg opprettet en egen `Types.fs` fil i frontend og flyttet disse typene inn dit. 
 Vi trenger også noen backend typer, så jeg har laget en ny fil `Types.fs` som lever i backenden og der definerer jeg en `IngredientDbModel`.
 
 ```fsharp
@@ -154,7 +154,7 @@ type RecipeDbModel =
 ```
 
 Her ønsker vi å validere `Meal` og noen av stringene våre.
-I tillegg så vil vi ikke en oppskrift uten steg skal være gyldig og den må ha minst 1 porsjon.
+I tillegg så vil vi ikke at en oppskrift uten steg skal være gyldig, og den må ha minst 1 porsjon.
 
 Valideringsfunksjonene kan se slik ut:
 ```fsharp
@@ -176,7 +176,7 @@ let validateMeal (meal: string) =
     | None -> Decode.fail $"{meal} er ikke et gyldig måltid."
 ```
 
-Oppskriftendekoder:
+Oppskrift dekoder:
 ```fsharp
 let recipeDecoder: Decoder<RecipeDbModel> =
     Decode.object (fun get ->
@@ -212,8 +212,8 @@ let encoder ingredient =
 ```
 
 For oppskrifter bruker vi den forrige enkoderen vår så vi får ingredients inn i oppskriften.
-Her genererer vi en JSON versjon av den samme domenemodellen vi hadde før, den som frontend forventer.
-For mer typesikkerher kan vi bruke den her for å forsikre oss om at den blir riktig.
+Her genererer vi en JSON-versjon av den samme domenemodellen vi hadde før, den som frontend forventer.
+For mer typesikkerhet kan vi bruke den her for å forsikre oss om at den blir riktig.
 ```fsharp
 let encodeRecipeAndIngredient (recipe, ingredients) =
     Encode.object [
@@ -239,7 +239,7 @@ Nå som vi har dekodere og enkodere trenger vi å bruke dem.
 Det kan vi gjøre når vi mottar/sender data. I vår backend gjør vi kun det i `HttpHandlers` fila vår.
 
 Først tenker jeg å lage to hjelpefunksjoner.
-Den første gjør det litt enklere å at vi har mottatt en dårlig spørring:
+Den første gjør det litt enklere å si at vi har mottatt en dårlig spørring:
 ```fsharp
 let private badRequest errorMessage next (context: HttpContext) =
     let errorMessage = {| Error = errorMessage |}
@@ -309,6 +309,7 @@ let postRecipe: HttpHandler =
 ## Fin
 
 Nå har vi en ganske robust backend, det eneste vi mangler er faktisk persistens.
+Som vanlig kan du finne hele prosjektet på [github](https://github.com/Bjorn-Strom/F-Friday/tree/5-decoders)
 Så bra at neste oppgave blir å lagre alt dette i en database. Det blir gøy!
 Da skal vi se på Dapper og Postgresql.
 
