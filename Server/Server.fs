@@ -33,6 +33,8 @@ let configureApp (app : IApplicationBuilder) =
 let configureServices (services : IServiceCollection) =
     services.AddCors() |> ignore
     services.AddGiraffe() |> ignore
+    services.AddTransient<Database.DatabaseConnection>(fun _ -> new Database.DatabaseConnection(Database.connectionString)) |> ignore
+
 
 let tryGetEnv = Environment.GetEnvironmentVariable >> function null | "" -> None | x -> Some x
 let port = "PORT" |> tryGetEnv |> Option.map uint16 |> Option.defaultValue 80us

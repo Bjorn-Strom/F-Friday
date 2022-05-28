@@ -201,7 +201,7 @@ let NewRecipeView () =
     let ingredients, setIngredients = React.useState<Ingredient list> List.empty
     let portions, setPortions = React.useState 0
     
-    let recipeId = System.Guid.NewGuid()
+    let recipeId, _ = React.useState (System.Guid.NewGuid())
 
     let setSteps key value =
         if List.length steps > key then

@@ -146,3 +146,23 @@ export function norwegianToMeal(name) {
     }
 }
 
+export function stringToMeal(name) {
+    switch (name) {
+        case "Breakfast": {
+            return new Meal(0);
+        }
+        case "Lunch": {
+            return new Meal(1);
+        }
+        case "Dinner": {
+            return new Meal(2);
+        }
+        case "Desert": {
+            return new Meal(3);
+        }
+        default: {
+            return void 0;
+        }
+    }
+}
+

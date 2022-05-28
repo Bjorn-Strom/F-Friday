@@ -1,20 +1,26 @@
 module HttpHandlers
 
 open Giraffe
+open Npgsql
 open Thoth.Json.Net
-open Microsoft.AspNetCore.Http
 open FSharp.Control.Tasks
+open FsToolkit.ErrorHandling
+open Microsoft.AspNetCore.Http
 
-let private badRequest errorMessage next (context: HttpContext) =
-    let errorMessage = {| Error = errorMessage |}
-    context.SetStatusCode(400)
-    json errorMessage next context
-    
+open ErrorMessage
+
+let getDatabaseConnection (context: HttpContext) = context.GetService<Database.DatabaseConnection>().getConnection()
+let mapError res (transaction: NpgsqlTransaction) =
+    res
+    |> TaskResult.mapError (fun ex ->
+        transaction.Rollback()
+        InternalError ex) 
+
 let decodeRecipeAndIngredientHelper (context: HttpContext) =
     task {
         let! body = context.ReadBodyFromRequestAsync()
-        let decodeRecipe = Decode.fromString Types.RecipeDbModel.decoder body
-        let decodeIngredient = Decode.fromString Types.IngredientDbModel.decodeList body
+        let decodeRecipe = Decode.fromString Types.RecipeDomainModel.decoder body
+        let decodeIngredient = Decode.fromString Types.IngredientDomainModel.decodeList body
         
         match decodeRecipe, decodeIngredient with
         | Ok recipe, Ok ingredients ->
@@ -29,42 +35,69 @@ let decodeRecipeAndIngredientHelper (context: HttpContext) =
     
 let getRecipes: HttpHandler =
     fun (next: HttpFunc) (context: HttpContext) ->
-        let encodedRecipes =
-            Database.getAllRecipes ()
-            |> List.map Types.encodeRecipeAndIngredient
-            
-        json encodedRecipes next context
+        let result =
+            taskResult {
+                let connection = getDatabaseConnection context
+                use transaction = connection.BeginTransaction()
+                // TODO: Cleanup
+                let! recipes = 
+                    Database.getAllRecipes transaction
+                    |> TaskResult.mapError (fun ex ->
+                        transaction.Rollback()
+                        InternalError ex)
+                transaction.Commit()
+                let encodedRecipes = Seq.map Types.encodeRecipeAndIngredient recipes
+                return encodedRecipes
+            }
+        httpStatusResult result next context
         
 let postRecipe: HttpHandler =
     fun (next: HttpFunc) (context: HttpContext) ->
-        task {
-            let! decodedRecipeAndIngredients = decodeRecipeAndIngredientHelper context
-            match decodedRecipeAndIngredients with
-            | Ok (recipe, ingredients) ->
-                let newRecipes =
-                    Database.addRecipe recipe ingredients
-                    |> List.map Types.encodeRecipeAndIngredient
-                return! json newRecipes next context
-            | Error e ->
-                return! badRequest e next context
-        }
+        let result =
+            taskResult {
+                let! recipe, ingredients =
+                    decodeRecipeAndIngredientHelper context
+                    |> TaskResult.mapError BadRequest
+                let connection = getDatabaseConnection context
+                use transaction = connection.BeginTransaction()
+                let! newRecipe =
+                    Database.addRecipe recipe ingredients transaction
+                    |> TaskResult.mapError (fun ex ->
+                        transaction.Rollback()
+                        InternalError ex)
+                transaction.Commit()
+                let encodedRecipe = Types.encodeRecipeAndIngredient newRecipe
+                return encodedRecipe
+            }
+        httpStatusResult result next context
+        
 let putRecipe: HttpHandler =
      fun (next: HttpFunc) (context: HttpContext) ->
-        task {
-            let! decodedRecipeAndIngredients = decodeRecipeAndIngredientHelper context
-            match decodedRecipeAndIngredients with
-            | Ok (recipe, ingredients) ->
-                let newRecipes =
-                    Database.updateRecipe recipe ingredients
-                    |> Types.encodeRecipeAndIngredient
-                return! json newRecipes next context
-            | Error e ->
-                return! badRequest e next context
-        }
+        let result = 
+            taskResult {
+                let! recipe, ingredients =
+                    decodeRecipeAndIngredientHelper context
+                    |> TaskResult.mapError BadRequest
+                let connection = getDatabaseConnection context
+                use transaction = connection.BeginTransaction()
+                let! updatedRecipe =
+                    Database.updateRecipe recipe ingredients transaction
+                    |> TaskResult.mapError (fun ex ->
+                        transaction.Rollback()
+                        InternalError ex)
+                transaction.Commit()
+                let encodedRecipe = Types.encodeRecipeAndIngredient updatedRecipe
+                return encodedRecipe
+            }
+        httpStatusResult result next context
         
 let deleteRecipe (id: System.Guid): HttpHandler =
     fun (next: HttpFunc) (context: HttpContext) ->
-        task {
-            Database.deleteRecipe id
-            return! json $"Deleted recipe with id: {id}" next context
-        }
+        let result =
+            taskResult {
+                let connection = getDatabaseConnection context
+                let! _ = Database.deleteRecipe id connection
+                         |> TaskResult.mapError InternalError
+                return $"Deleted recipe with id: {id}"
+            }
+        httpStatusResult result next context

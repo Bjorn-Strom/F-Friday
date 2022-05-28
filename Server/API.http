@@ -1,0 +1,50 @@
+GET http://localhost:80/api/recipes
+###
+POST http://localhost:80/api/recipe
+Content-Type: application/json
+
+{
+  "id": "9261c1f5-f175-4c3b-8c18-c914779b41ee",
+  "title": "asdasdad",
+  "description": "asdasdasd",
+  "meal": "Breakfast",
+  "time": 4,
+  "steps": [
+    "asdasdasd",
+    "asdasdasd"
+  ],
+  "ingredients": [
+    {
+      "volume": 1,
+      "measurement": "Kg",
+      "name": "asdasdasd",
+      "recipeId": "9261c1f5-f175-4c3b-8c18-c914779b41ee"
+    }
+  ],
+  "portions": 4
+}
+###
+PUT http://localhost:80/api/recipe
+Content-Type: application/json
+
+{
+  "id": "9261c1f5-f175-4c3b-8c18-c914779b41ee",
+  "title": "Faktisk tittel",
+  "description": "Faktisk beskrivelse",
+  "meal": "Dinner",
+  "time": 1,
+  "steps": [
+    "asdasdasd"
+  ],
+  "ingredients": [
+    {
+      "volume": 1,
+      "measurement": "Kg",
+      "name": "asdasdasd",
+      "recipeId": "9261c1f5-f175-4c3b-8c18-c914779b41ee"
+    }
+  ],
+  "portions": 4
+}
+###
+DELETE http://localhost:80/api/recipe/9261c1f5-f175-4c3b-8c18-c914779b41ee
