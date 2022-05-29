@@ -1,6 +1,7 @@
 module Server
 
 open System
+open Dapper
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Hosting
 open Microsoft.Extensions.Hosting
@@ -31,6 +32,7 @@ let configureApp (app : IApplicationBuilder) =
        .UseGiraffe routes
 
 let configureServices (services : IServiceCollection) =
+    Types.addTypeHandlers()
     services.AddCors() |> ignore
     services.AddGiraffe() |> ignore
     services.AddTransient<Database.DatabaseConnection>(fun _ -> new Database.DatabaseConnection(Database.connectionString)) |> ignore

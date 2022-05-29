@@ -200,7 +200,6 @@ let NewRecipeView () =
     let steps, setSteps = React.useState<string list> List.empty
     let ingredients, setIngredients = React.useState<Ingredient list> List.empty
     let portions, setPortions = React.useState 0
-    
     let recipeId, _ = React.useState (System.Guid.NewGuid())
 
     let setSteps key value =

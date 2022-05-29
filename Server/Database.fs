@@ -6,6 +6,48 @@ open Npgsql
 
 open Types
 
+type GuidHandler () =
+    inherit SqlMapper.TypeHandler<Guid>()
+    
+    override this.Parse(value) =
+        Guid.Parse(string value)
+        
+    override this.SetValue(parameter, guid) =
+        parameter.Value <- guid.ToString()
+        
+type MealHandler () =
+    inherit SqlMapper.TypeHandler<Shared.Meal>()
+    
+    override this.Parse(value) =
+        let value = string value
+        Shared.stringToMeal value
+        |> function
+            | Some meal -> meal
+            | None -> failwith $"{value} is not a valid meal type."
+            
+    override this.SetValue(parameter, meal) =
+        parameter.Value <- meal.ToString()
+        
+type MeasurementHandler () =
+    inherit SqlMapper.TypeHandler<Shared.Measurement>()
+    
+    override this.Parse(value) =
+        let value = string value
+        Shared.stringToMeasurement value
+        |> function
+            | Some measurement -> measurement
+            | None -> failwith $"{value} is not a valid measurement type."
+            
+    override this.SetValue(parameter, measurement) =
+        parameter.Value <- measurement.ToString()
+        
+        
+let addTypeHandlers () =
+    SqlMapper.RemoveTypeMap(typeof<Guid>)
+    SqlMapper.AddTypeHandler(GuidHandler())
+    SqlMapper.AddTypeHandler(MealHandler())
+    SqlMapper.AddTypeHandler(MeasurementHandler())
+
 type DatabaseConnection (connectionString: string) =
     let connection: NpgsqlConnection = new NpgsqlConnection(connectionString)
     member this.getConnection () =
@@ -51,7 +93,7 @@ let getAllRecipes (transaction: NpgsqlTransaction) =
             let! _ =
                 transaction.Connection.QueryAsync(
                     query,
-                    (fun (recipe: RecipeDbModel) (ingredient: IngredientDbModel) ->
+                    (fun (recipe: Recipe) (ingredient: Ingredient) ->
                         recipes <- recipes@[recipe]
                         if (ingredient :> obj <> null) then
                             ingredients <- ingredients@[ingredient]),
@@ -63,6 +105,7 @@ let getAllRecipes (transaction: NpgsqlTransaction) =
                 |> Map.ofList
             let recipes =
                 recipes
+                |> List.distinct
                 |> List.map (fun r -> r, ingredients[r.Id])
                 
             return Ok recipes
@@ -73,7 +116,6 @@ let getAllRecipes (transaction: NpgsqlTransaction) =
 
 let addRecipe recipe ingredients (transaction: NpgsqlTransaction) =
     task {
-        let recipeToInsert, ingredientsToInsert = recipeToDbModels recipe ingredients
         let insertRecipeQuery =
             "
             INSERT INTO Recipe (id, description, meal, portions, steps, title, time)
@@ -81,13 +123,13 @@ let addRecipe recipe ingredients (transaction: NpgsqlTransaction) =
             RETURNING *;
             "
         let recipeParameters = dict [
-            "id", box recipeToInsert.Id
-            "description", box recipeToInsert.Description
-            "meal", box recipeToInsert.Meal
-            "portions", box recipeToInsert.Portions
-            "steps", box recipeToInsert.Steps
-            "title", box recipeToInsert.Title
-            "time", box recipeToInsert.Time
+            "id", box recipe.Id
+            "description", box recipe.Description
+            "meal", box recipe.Meal
+            "portions", box recipe.Portions
+            "steps", box recipe.Steps
+            "title", box recipe.Title
+            "time", box recipe.Time
         ]
         
         let insertIngredientQuery =
@@ -100,12 +142,12 @@ let addRecipe recipe ingredients (transaction: NpgsqlTransaction) =
             SELECT * FROM Ingredient
             WHERE Recipe = @recipe;
             "
-        let ingredientRecipeIdParameters = dict [ "recipe", box recipeToInsert.Id ]
+        let ingredientRecipeIdParameters = dict [ "recipe", box recipe.Id ]
         
         try
-            let! recipe = transaction.Connection.QuerySingleAsync<RecipeDbModel>(insertRecipeQuery, recipeParameters, transaction)
-            let! _ = transaction.Connection.ExecuteAsync(insertIngredientQuery, ingredientsToInsert, transaction)
-            let! ingredients = transaction.Connection.QueryAsync<IngredientDbModel>(getIngredientsQuery, ingredientRecipeIdParameters, transaction)
+            let! recipe = transaction.Connection.QuerySingleAsync<Recipe>(insertRecipeQuery, recipeParameters, transaction)
+            let! _ = transaction.Connection.ExecuteAsync(insertIngredientQuery, ingredients, transaction)
+            let! ingredients = transaction.Connection.QueryAsync<Ingredient>(getIngredientsQuery, ingredientRecipeIdParameters, transaction)
             
             return Ok (recipe, ingredients |> Seq.toList)
         with
@@ -114,7 +156,6 @@ let addRecipe recipe ingredients (transaction: NpgsqlTransaction) =
 
 let updateRecipe recipe ingredients (transaction: NpgsqlTransaction) =
     task {
-        let recipeToUpdate, ingredientsToUpdate = recipeToDbModels recipe ingredients
         let recipeQuery =
             "
             UPDATE Recipe
@@ -129,13 +170,13 @@ let updateRecipe recipe ingredients (transaction: NpgsqlTransaction) =
             "
             
         let recipeParameters = dict [
-            "id", box recipeToUpdate.Id
-            "description", box recipeToUpdate.Description
-            "meal", box recipeToUpdate.Meal
-            "portions", box recipeToUpdate.Portions
-            "steps", box recipeToUpdate.Steps
-            "title", box recipeToUpdate.Title
-            "time", box recipeToUpdate.Time
+            "id", box recipe.Id
+            "description", box recipe.Description
+            "meal", box recipe.Meal
+            "portions", box recipe.Portions
+            "steps", box recipe.Steps
+            "title", box recipe.Title
+            "time", box recipe.Time
         ]
         
         let updateIngredientQuery =
@@ -152,12 +193,12 @@ let updateRecipe recipe ingredients (transaction: NpgsqlTransaction) =
             SELECT * FROM Ingredient
             WHERE Recipe = @recipe;
             "
-        let ingredientParameters = dict [ "recipe", box recipeToUpdate.Id ]
+        let ingredientParameters = dict [ "recipe", box recipe.Id ]
             
         try
-            let! recipe = transaction.Connection.QuerySingleAsync<RecipeDbModel>(recipeQuery, recipeParameters, transaction)
-            let! _ = transaction.Connection.ExecuteAsync(updateIngredientQuery, ingredientsToUpdate, transaction)
-            let! ingredients = transaction.Connection.QueryAsync<IngredientDbModel>(getIngredientsQuery, ingredientParameters, transaction)
+            let! recipe = transaction.Connection.QuerySingleAsync<Recipe>(recipeQuery, recipeParameters, transaction)
+            let! _ = transaction.Connection.ExecuteAsync(updateIngredientQuery, ingredients, transaction)
+            let! ingredients = transaction.Connection.QueryAsync<Ingredient>(getIngredientsQuery, ingredientParameters, transaction)
             return Ok (recipe, ingredients |> Seq.toList)
         with
             | ex -> return Error ex

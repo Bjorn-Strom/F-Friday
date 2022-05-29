@@ -13,13 +13,15 @@ let private validateStringLength (name: string) maxLength (toValidate: string) =
     else
         Decode.succeed toValidate
 
-type IngredientDomainModel =
+[<CLIMutable>]
+type Ingredient =
     { Volume: float
       Measurement: Measurement
       Name: string
       Recipe: System.Guid }
-
-type RecipeDomainModel =
+    
+[<CLIMutable>]
+type Recipe =
     { Id: System.Guid
       Title: string
       Description: string
@@ -27,25 +29,8 @@ type RecipeDomainModel =
       Time: float
       Steps: string array
       Portions: int }
-
-[<CLIMutable>]
-type RecipeDbModel =
-    { Id: string
-      Title: string
-      Description: string
-      Meal: string
-      Time: float
-      Steps: string array
-      Portions: int }
-
-[<CLIMutable>]
-type IngredientDbModel =
-    { Volume: float
-      Measurement: string
-      Name: string
-      Recipe: string }
-
-module RecipeDomainModel =
+    
+module Recipe =
     let private validateStep steps =
         if Array.isEmpty steps then
             Decode.fail "Oppskrifter trenger minst ett steg"
@@ -63,7 +48,7 @@ module RecipeDomainModel =
         | Some meal -> Decode.succeed meal
         | None -> Decode.fail $"{meal} er ikke et gyldig måltid."
 
-    let decoder: Decoder<RecipeDomainModel> =
+    let decoder: Decoder<Recipe> =
         Decode.object
             (fun get ->
                 { Id = get.Required.Field "id" Decode.guid
@@ -82,22 +67,13 @@ module RecipeDomainModel =
                            |> Decode.andThen validateStep)
                   Portions = get.Required.Field "portions" (Decode.int |> Decode.andThen validatePortion) })
 
-    let toDbModel (domain: RecipeDomainModel) : RecipeDbModel =
-        { Id = domain.Id.ToString()
-          Title = domain.Title
-          Description = domain.Description
-          Meal = domain.Meal.ToString()
-          Time = domain.Time
-          Steps = domain.Steps
-          Portions = domain.Portions }
-
-module IngredientDomainModel =
+module Ingredient =
     let private validateMeasurement (measurement: string) =
         match stringToMeasurement measurement with
         | Some measurement -> Decode.succeed measurement
         | None -> Decode.fail $"{measurement} er ikke en gyldig målenhet."
 
-    let decoder: Decoder<IngredientDomainModel> =
+    let decoder: Decoder<Ingredient> =
         Decode.object
             (fun get ->
                 { Volume = get.Required.Field "volume" Decode.float
@@ -113,23 +89,17 @@ module IngredientDomainModel =
                            |> Decode.andThen (validateStringLength "name" 32))
                   Recipe = get.Required.Field "recipeId" Decode.guid })
 
-    let decodeList: Decoder<IngredientDomainModel list> =
+    let decodeList: Decoder<Ingredient list> =
         Decode.object (fun get -> get.Required.Field "ingredients" (Decode.list decoder))
 
-    let encoder (ingredient: IngredientDbModel) =
+    let encoder (ingredient: Ingredient) =
         Encode.object [ "volume", Encode.float ingredient.Volume
                         "measurement", Encode.string (ingredient.Measurement.ToString())
                         "name", Encode.string ingredient.Name
-                        "recipeId", Encode.string ingredient.Recipe ]
+                        "recipe", Encode.guid ingredient.Recipe ]
 
-    let toDbModel (ingredient: IngredientDomainModel) : IngredientDbModel =
-        { Volume = ingredient.Volume
-          Measurement = ingredient.Measurement.ToString()
-          Name = ingredient.Name
-          Recipe = ingredient.Recipe.ToString() }
-
-let encodeRecipeAndIngredient (recipe: RecipeDbModel, ingredients: IngredientDbModel seq) =
-    Encode.object [ "id", Encode.string recipe.Id
+let encodeRecipeAndIngredient (recipe: Recipe, ingredients: Ingredient seq) =
+    Encode.object [ "id", Encode.guid recipe.Id
                     "title", Encode.string recipe.Title
                     "description", Encode.string recipe.Description
                     "meal", Encode.string (recipe.Meal.ToString())
@@ -139,36 +109,6 @@ let encodeRecipeAndIngredient (recipe: RecipeDbModel, ingredients: IngredientDbM
                              |> Encode.array
                     "portions", Encode.int recipe.Portions
                     "ingredients", ingredients
-                                   |> Seq.map IngredientDomainModel.encoder
+                                   |> Seq.map Ingredient.encoder
                                    |> Encode.seq
                 ]
-
-module RecipeDbModel =
-    let toDomain (dbModel: RecipeDbModel) : RecipeDomainModel =
-        { Id = System.Guid.Parse dbModel.Id
-          Title = dbModel.Title
-          Description = dbModel.Description
-          Meal =
-              stringToMeal dbModel.Meal
-              |> Option.defaultValue Breakfast
-          Time = dbModel.Time
-          Steps = dbModel.Steps
-          Portions = dbModel.Portions }
-
-module IngredientDbModel =
-    let toDomain (dbModel: IngredientDbModel) : IngredientDomainModel =
-        { Volume = dbModel.Volume
-          Measurement =
-              stringToMeasurement dbModel.Measurement
-              |> Option.defaultValue Stk
-          Name = dbModel.Name
-          Recipe = System.Guid.Parse dbModel.Recipe }
-
-let recipeToDbModels (recipe: RecipeDomainModel) (ingredients: IngredientDomainModel list) =
-    let recipeToInsert = RecipeDomainModel.toDbModel recipe
-
-    let ingredientsToInsert =
-        ingredients
-        |> List.map (fun i -> IngredientDomainModel.toDbModel i)
-
-    recipeToInsert, ingredientsToInsert

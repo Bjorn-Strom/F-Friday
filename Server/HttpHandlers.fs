@@ -19,8 +19,8 @@ let mapError res (transaction: NpgsqlTransaction) =
 let decodeRecipeAndIngredientHelper (context: HttpContext) =
     task {
         let! body = context.ReadBodyFromRequestAsync()
-        let decodeRecipe = Decode.fromString Types.RecipeDomainModel.decoder body
-        let decodeIngredient = Decode.fromString Types.IngredientDomainModel.decodeList body
+        let decodeRecipe = Decode.fromString Types.Recipe.decoder body
+        let decodeIngredient = Decode.fromString Types.Ingredient.decodeList body
         
         match decodeRecipe, decodeIngredient with
         | Ok recipe, Ok ingredients ->
