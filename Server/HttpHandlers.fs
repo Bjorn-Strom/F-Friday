@@ -3,7 +3,6 @@ module HttpHandlers
 open Giraffe
 open Npgsql
 open Thoth.Json.Net
-open FSharp.Control.Tasks
 open FsToolkit.ErrorHandling
 open Microsoft.AspNetCore.Http
 
