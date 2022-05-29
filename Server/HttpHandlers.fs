@@ -17,20 +17,16 @@ let mapError res (transaction: NpgsqlTransaction) =
         InternalError ex) 
 
 let decodeRecipeAndIngredientHelper (context: HttpContext) =
-    task {
+    taskResult {
         let! body = context.ReadBodyFromRequestAsync()
-        let decodeRecipe = Decode.fromString Types.Recipe.decoder body
-        let decodeIngredient = Decode.fromString Types.Ingredient.decodeList body
+        let! decodeRecipe =
+            Decode.fromString Types.Recipe.decoder body
+            |> Result.mapError BadRequest
+        let! decodeIngredient =
+            Decode.fromString Types.Ingredient.decodeList body
+            |> Result.mapError BadRequest
         
-        match decodeRecipe, decodeIngredient with
-        | Ok recipe, Ok ingredients ->
-            return Ok (recipe, ingredients)
-        |  Error e1, Error e2 ->
-            return Error $"Feil under decoding av oppskrifter {e1} og ingredienser {e2}."
-        | Error e, _ ->
-            return Error $"Feil under decoding av oppskrifter {e}."
-        |  _, Error e ->
-            return Error $"Feil under decoding av ingredienser {e}."
+        return decodeRecipe, decodeIngredient
     }
     
 let getRecipes: HttpHandler =
@@ -39,7 +35,6 @@ let getRecipes: HttpHandler =
             taskResult {
                 let connection = getDatabaseConnection context
                 use transaction = connection.BeginTransaction()
-                // TODO: Cleanup
                 let! recipes = 
                     Database.getAllRecipes transaction
                     |> TaskResult.mapError (fun ex ->
@@ -55,9 +50,7 @@ let postRecipe: HttpHandler =
     fun (next: HttpFunc) (context: HttpContext) ->
         let result =
             taskResult {
-                let! recipe, ingredients =
-                    decodeRecipeAndIngredientHelper context
-                    |> TaskResult.mapError BadRequest
+                let! recipe, ingredients = decodeRecipeAndIngredientHelper context
                 let connection = getDatabaseConnection context
                 use transaction = connection.BeginTransaction()
                 let! newRecipe =
@@ -75,9 +68,7 @@ let putRecipe: HttpHandler =
      fun (next: HttpFunc) (context: HttpContext) ->
         let result = 
             taskResult {
-                let! recipe, ingredients =
-                    decodeRecipeAndIngredientHelper context
-                    |> TaskResult.mapError BadRequest
+                let! recipe, ingredients = decodeRecipeAndIngredientHelper context
                 let connection = getDatabaseConnection context
                 use transaction = connection.BeginTransaction()
                 let! updatedRecipe =

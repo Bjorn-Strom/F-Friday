@@ -32,7 +32,7 @@ let configureApp (app : IApplicationBuilder) =
        .UseGiraffe routes
 
 let configureServices (services : IServiceCollection) =
-    Types.addTypeHandlers()
+    Database.addTypeHandlers()
     services.AddCors() |> ignore
     services.AddGiraffe() |> ignore
     services.AddTransient<Database.DatabaseConnection>(fun _ -> new Database.DatabaseConnection(Database.connectionString)) |> ignore

@@ -112,7 +112,6 @@ let getAllRecipes (transaction: NpgsqlTransaction) =
         with
             | ex -> return Error ex
     }
-    
 
 let addRecipe recipe ingredients (transaction: NpgsqlTransaction) =
     task {
