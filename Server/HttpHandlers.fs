@@ -9,11 +9,6 @@ open Microsoft.AspNetCore.Http
 open ErrorMessage
 
 let getDatabaseConnection (context: HttpContext) = context.GetService<Database.DatabaseConnection>().getConnection()
-let mapError res (transaction: NpgsqlTransaction) =
-    res
-    |> TaskResult.mapError (fun ex ->
-        transaction.Rollback()
-        InternalError ex) 
 
 let decodeRecipeAndIngredientHelper (context: HttpContext) =
     taskResult {
@@ -33,15 +28,10 @@ let getRecipes: HttpHandler =
         let result =
             taskResult {
                 let connection = getDatabaseConnection context
-                use transaction = connection.BeginTransaction()
-                let! recipes = 
-                    Database.getAllRecipes transaction
-                    |> TaskResult.mapError (fun ex ->
-                        transaction.Rollback()
-                        InternalError ex)
-                transaction.Commit()
-                let encodedRecipes = Seq.map Types.encodeRecipeAndIngredient recipes
-                return encodedRecipes
+                let! recipes = Database.getAllRecipes connection |> TaskResult.mapError InternalError
+                return
+                    recipes
+                    |> Seq.map Types.encodeRecipeAndIngredient
             }
         httpStatusResult result next context
         
@@ -58,8 +48,9 @@ let postRecipe: HttpHandler =
                         transaction.Rollback()
                         InternalError ex)
                 transaction.Commit()
-                let encodedRecipe = Types.encodeRecipeAndIngredient newRecipe
-                return encodedRecipe
+                return
+                    newRecipe
+                    |> Types.encodeRecipeAndIngredient
             }
         httpStatusResult result next context
         
@@ -86,8 +77,9 @@ let deleteRecipe (id: System.Guid): HttpHandler =
         let result =
             taskResult {
                 let connection = getDatabaseConnection context
-                let! _ = Database.deleteRecipe id connection
+                let! numberOfRowsDeleted =
+                         Database.deleteRecipe id connection
                          |> TaskResult.mapError InternalError
-                return $"Deleted recipe with id: {id}"
+                return $"Deleted {numberOfRowsDeleted} rows."
             }
         httpStatusResult result next context

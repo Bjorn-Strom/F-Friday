@@ -79,7 +79,7 @@ let connectionString =
 
     $"User ID={credentials.User};Password={credentials.Password};Host={credentials.Host};Port={credentials.Port};Database={credentials.Database};Pooling=true;SSL Mode=Require;TrustServerCertificate=True;"
 
-let getAllRecipes (transaction: NpgsqlTransaction) =
+let getAllRecipes (connection: NpgsqlConnection) =
     task {
         let query =
             "
@@ -91,13 +91,12 @@ let getAllRecipes (transaction: NpgsqlTransaction) =
         let mutable ingredients = []
         try
             let! _ =
-                transaction.Connection.QueryAsync(
+                connection.QueryAsync(
                     query,
-                    (fun (recipe: Recipe) (ingredient: Ingredient) ->
+                    (fun (recipe: Recipe) (ingredient: Ingredient option) ->
                         recipes <- recipes@[recipe]
-                        if (ingredient :> obj <> null) then
-                            ingredients <- ingredients@[ingredient]),
-                    transaction = transaction)
+                        if ingredient.IsSome then
+                            ingredients <- ingredients@[ingredient.Value]))
                 
             let ingredients =
                 ingredients
@@ -105,8 +104,9 @@ let getAllRecipes (transaction: NpgsqlTransaction) =
                 |> Map.ofList
             let recipes =
                 recipes
-                |> List.distinct
-                |> List.map (fun r -> r, ingredients[r.Id])
+                |> Seq.distinct
+                |> Seq.map (fun r ->
+                    r, List.toSeq ingredients[r.Id])
                 
             return Ok recipes
         with
@@ -148,7 +148,7 @@ let addRecipe recipe ingredients (transaction: NpgsqlTransaction) =
             let! _ = transaction.Connection.ExecuteAsync(insertIngredientQuery, ingredients, transaction)
             let! ingredients = transaction.Connection.QueryAsync<Ingredient>(getIngredientsQuery, ingredientRecipeIdParameters, transaction)
             
-            return Ok (recipe, ingredients |> Seq.toList)
+            return Ok (recipe, ingredients)
         with
             | ex -> return Error ex
     }
@@ -198,7 +198,7 @@ let updateRecipe recipe ingredients (transaction: NpgsqlTransaction) =
             let! recipe = transaction.Connection.QuerySingleAsync<Recipe>(recipeQuery, recipeParameters, transaction)
             let! _ = transaction.Connection.ExecuteAsync(updateIngredientQuery, ingredients, transaction)
             let! ingredients = transaction.Connection.QueryAsync<Ingredient>(getIngredientsQuery, ingredientParameters, transaction)
-            return Ok (recipe, ingredients |> Seq.toList)
+            return Ok (recipe, ingredients)
         with
             | ex -> return Error ex
     }
@@ -217,12 +217,12 @@ let deleteRecipe (id: Guid) (connection: NpgsqlConnection) =
             "
             
         let parameters = dict [
-            "recipeId", box (id.ToString())
+            "recipeId", box id
         ]
         
         try
-            let! _ = connection.ExecuteAsync(query, parameters)
-            return Ok ()
+            let! numberOfRowsDeleted = connection.ExecuteAsync(query, parameters)
+            return Ok numberOfRowsDeleted
         with
             | ex -> return Error ex
     }

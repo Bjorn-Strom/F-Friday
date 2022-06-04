@@ -1,15 +1,20 @@
-# F# Friday 5
+# F# Friday 6
 
-Hei og velkommen til den femte posten i en serie om programmeringsspråket F#!
+Hei og velkommen til den sjett posten i en serie om programmeringsspråket F#!
 
 Lenker til tidligere artikler:
 - Del 1: [Introduksjon](https://blogg.bekk.no/f-friday-1-39f63618d2e4)
 - Del 2: [Typesystemet](https://blogg.bekk.no/f-friday-2-typesystemet-3e7ee0554f0e)
 - Del 3: [Backenden](https://blogg.bekk.no/f-friday-3-backend-7463edf0f94a)
 - Del 4: [Frontent og React](https://blogg.bekk.no/f-friday-4-frontend-og-react-c356d34a6095)
-- **Del 5: Databaser**
+- Del 5: [JSON-Dekodere](https://blogg.bekk.no/f-friday-5-json-dekodere-f2e6b4fe99c9)
+- **Del 6: Databaser**
 
-[Forrige gang](https://blogg.bekk.no/f-friday-4-frontend-og-react-c356d34a6095) lagde vi en enkelt frontend i Feliz som kunne snakke med backenden vår. Når vi først lagde backenden vår for en stund siden valgte vi å brukte vi en dictionary til å holde på alle oppskriftene våre. Nå, etter en litt lengre pause, skal vi bytte ut denne in-memory databasen med PostgreSQL.
+[Forrige gang](https://blogg.bekk.no/f-friday-5-json-dekodere-f2e6b4fe99c9) endret vi hvordan backenden fungerte. Vi tok nemmelig i bruk dekodere for å passe på at dataen vi får inn er riktig formatert. Denne dataen blir gjort on til datatypene våre og ble lagret i en in-memory database ved navn `Fakabase`.
+Denne gangen skal vi endelig gjøre det - vi skal bytte til å bruke en faktisk database. 
+Som en liten bonus skal vi også bruke et bibliotek som heter `FsToolkit.Errorhandling` så vi slipper å må matche på hver eneste result type vi har. Det vil gjøre koden vår mye mer lettleselig.
+
+Dette blir spennende for vi skal nemmelig bruke muterende variabler, skrive klasser og bruke dependency injection! Dette blir helt villt, så følg med!
 
 ## Verktøy
 F# har ganske mange forskjellige verktøy man kan bruke for å jobbe med databaser. De i listen under under er de jeg selv har erfaring med, men du kan godt google litt om du vil ha enda flere alternativer.
@@ -17,8 +22,9 @@ F# har ganske mange forskjellige verktøy man kan bruke for å jobbe med databas
 - [SqlProvider](https://github.com/fsprojects/SQLProvider) - Genererer typer fra databasen din mens du programmerer. Det betyr at koden din ikke vil kompilere dersom du har skrevet feil SQL. Behøver en aktiv tilgang til din database for å bygge koden din, som kan være litt irriterende å sette opp. Men når dette fungerer er det en uslåelig utvikleropplevelse.
 - [Entity Framework]()(EF) - Selv om EF er mest kjent som et C# bibliotek fungerer det i F# også, men det er ikke like ergonomisk å jobbe med som noen av alternativene. I tillegg så liker jeg ikke å abstrahere bort SQL for et dårlig DSL.
 - [RepoDb](https://github.com/mikependon/RepoDB) - Gir et enklere EF lignende API uten mye av de ekstra greiene som EF tar med, men har mange av de samme problemene.
+- [Donald](https://github.com/pimbrouwers/Donald) - Tilbyr et lite lag med funksjoner for å gjøre det enklere å bruke Dapper i F#.
 
-Vi skal gjøre det veldig enkelt og bruke Dapper. Gode gamle Dapper!
+Vi skal gjøre det veldig enkelt og kun bruke Dapper.
 
 ## Dapper
 [Dapper](https://github.com/DapperLib/Dapper) er, som de selv sier, en "simple object mapper for .Net". Det er en lettvekts måte å kommunisere med databaser på og vi kan bruke dette rett i F#.
@@ -33,8 +39,6 @@ type AddressDbModel {
 
 Så kan vi bruke Dapper til å skrive en insert spørring slik:
 ```fsharp
-let name = "Someone"
-let address = "Somewhere Road"
 let query = 
     "
     INSERT INTO Addresses (name, address)
@@ -42,226 +46,177 @@ let query =
     RETURNING *;
     "
 let parameters = dict [
-        "name", box name
-        "address, box address
+        "name", box "Someone"
+        "address, box "Somewhere"
     ]
 connection.query<AddressDbModel>(query, parameter)
 ```
 
-Vi starter med å lage noen variabler som holder på dataen vi ønske å inserte.
-Så lager vi selve spørringen. Når du gir Dapper parametrene gir du de et vilkårlig navn som starter med @. Disse blir så erstattet av Dapper senere, det vil du at Dapper dealer med så du slipper SQL injections.
+Her lager vi en spørring som legger til navn og adresse inn i addresseboka vår.
+Legg merke til at parametre i Dapper starter med en '@'.
 
-Deretter lager vi en dictionary, `Dictionary<string,obj>`, som består av key/value pairs. Hvor keyen er den samme stringen vi bruker for parametrene til spørringen men uten @
-og value er den dataen du ønsker å sende inn. Da Dapper forventer `obj` datatypen, bruker vi `box` funksjonen.
-Her bruker vi også PostgreSql sin `RETURNING` statement som betyr at den returnerer det som insertes. Da slipper vi å gjøre en ekstra spørring for å hente dataen ut igjen.
+Deretter lager vi en dictionary, `Dictionary<string,obj>`, som består av key/value pairs.
+Hvor keyen er den samme stringen vi bruker for parametrene til spørringen men uten '@' denne gangen.
+Vi bruker funksjonen ´box´ på parametrene våre for å få dem gjort om til en `obj` type.
 
-[//]: # (## Forbered sjiraffen)
+## F# og Dapper
+Okei, da sletter vi `Fakabase` - all koden i `Database.fs` må gå!
+Det vi ønsker å oppnå er å lagre typene vi opprettet forrige gang i databasen. Jeg har allerede lagd tabeller som matcher.
 
-[//]: # ()
-[//]: # (Alle disse blokkene returnerer tasks, så la oss skrive om Giraffe koden vår til å bruke tasks også. Da blir det enkelt å få disse to biblioteken til å snakke sammen. Fra forrige gang mangler `getRecipes` og `deleteRecipe` tasks. Det legger vi enkelt til og HttpHandlerene våre ser nå slik ut:)
+Det første vi må gjøre er å fikse et lite problem. Dapper forstår seg ikke på F# typer, vi må skrive egne klasser som dealer med konvertering fra F# type til noe Postgres kan forstå - og tilbake igjen.
+Disse klassene kalles for `TypeHandlers` og er veldig enkle å lage. Vi trenger 3 av dem: `GuidHandler`, `MealHandler` og `MeasurementHandler`.
+Så lag en klasse om arver fra `SqlMapper.Typehandler<T>` og implementerer metodene `Parse`, postgres -> F#, og `SetValue`, F# -> postgres.
 
-[//]: # (```fsharp)
-
-[//]: # (let getRecipes: HttpHandler =)
-
-[//]: # (    fun &#40;next: HttpFunc&#41; &#40;context: HttpContext&#41; ->)
-
-[//]: # (        task {)
-
-[//]: # (            let! recipes = Database.getAllRecipes &#40;&#41;)
-
-[//]: # (          return! json recipes next context)
-
-[//]: # (        })
-
-[//]: # (let deleteRecipe &#40;id: System.Guid&#41; : HttpHandler =)
-
-[//]: # (    fun &#40;next: HttpFunc&#41; &#40;context: HttpContext&#41; ->)
-
-[//]: # (        task {)
-
-[//]: # (            do! Database.deleteRecipe id)
-
-[//]: # (            return! text $"Deleted recipe with id: {id}" next context)
-
-[//]: # (        })
-
-[//]: # (```)
-
-## Modeller og funksjoner
-Nå som vi vet hvordan Dapper fungerer kan vi lage noen hjelpefunksjoner som gjør det enklere å konvertere mellom datamodellene våre.
-
-Det første vi trenger er noen databasemodeller. Altså typer som sier hvordan dataen vår faktisk ser ut i databasen. Denne typen må matche den tabellen den tilhører.
-Det vi også kommer til å trenge er funksjoner som konverterer mellom de forskjellige modell-typene våre. Altså fra domene-modell til database-modell og tilbake igjen.
-
-Vi starter med databasemodellene våre!
-
-For oppskrifter:
+I vårt tilfelle ser de slik ut: 
 ```fsharp
-// Databasemodell
-[<CLIMutable>]
-type RecipeDbModel =
-    { Id: string
-      Title: string
-      Description: string
-      Meal: string
-      Time: float
-      Steps: string array
-      Portions: int }
-
-// Domene til databasemodell
-let private recipeToDb (recipe: Recipe) =
-    { Id = recipe.Id.ToString()
-      Title = recipe.Title
-      Description = recipe.Description
-      Meal = recipe.Meal |> stringifyMeal
-      Time = recipe.Time
-      Steps = List.toArray recipe.Steps
-      Portions = recipe.Portions }
-
-// Database til domenemodell
-let private recipeDbToDomain (recipe: RecipeDbModel) ingredients =
-    { Id = Guid.Parse(recipe.Id)
-      Title = recipe.Title
-      Description = recipe.Description
-      Meal = stringToMeal recipe.Meal
-      Time = recipe.Time
-      Steps = Array.toList recipe.Steps
-      Ingredients = ingredients
-      Portions = recipe.Portions }
+type GuidHandler () =
+    inherit SqlMapper.TypeHandler<Guid>()
+    
+    override this.Parse(value) =
+        Guid.Parse(string value)
+        
+    override this.SetValue(parameter, guid) =
+        parameter.Value <- guid.ToString()
+        
+type MealHandler () =
+    inherit SqlMapper.TypeHandler<Shared.Meal>()
+    
+    override this.Parse(value) =
+        let value = string value
+        Shared.stringToMeal value
+        |> function
+            | Some meal -> meal
+            | None -> failwith $"{value} is not a valid meal type."
+            
+    override this.SetValue(parameter, meal) =
+        parameter.Value <- meal.ToString()
+        
+type MeasurementHandler () =
+    inherit SqlMapper.TypeHandler<Shared.Measurement>()
+    
+    override this.Parse(value) =
+        let value = string value
+        Shared.stringToMeasurement value
+        |> function
+            | Some measurement -> measurement
+            | None -> failwith $"{value} is not a valid measurement type."
+            
+    override this.SetValue(parameter, measurement) =
+        parameter.Value <- measurement.ToString()
 ```
 
-For ingredienser:
+Disse må også registreres før Dapper kan bruke dem. Vi lager en hjelpefunksjon som ordner det:
+````fsharp
+let addTypeHandlers () =
+    SqlMapper.RemoveTypeMap(typeof<Guid>)
+    SqlMapper.AddTypeHandler(GuidHandler())
+    SqlMapper.AddTypeHandler(MealHandler())
+    SqlMapper.AddTypeHandler(MeasurementHandler())
+````
+Her må vi også fjerne den opprinnelige `Guid` handleren da vi ønsker å bruke vår egen.
+Kall denne funksjonen i `Server.fs` filen så er vi sikre på at de er registrert så tidlig som mulig.
+
+Før vi kan starte å kose oss skikkelig med SQL skal vi gjøre en siste ting. Jeg har nemmelig lyst til å lage
+en klasse som lager, åpner og stenger database-connections for oss. Denne skal så dependency injectes inn.
+Jeg tror det kan være nyttig å se hvor enkelt det er å bruke slike patterns fra F# også.
+
+Her vil vi også lage en klasse. Den tar imot en string, som er connection-stringen vi trenger for å koble til databasen vår.
+Vi vil også at denne klassen implementerer `IDisposable`. Klassen trenger å ha en metode som åpner og returnerer en connection, og vi trenger og rydde disse opp i `IDispose`
 ```fsharp
-// Databasemodell
-[<CLIMutable>]
-type IngredientDbModel =
-    { Volume: float
-      Measurement: string
-      Recipe: string // Fremmednøkkel til oppskrift }
-
-// Domene til databasemodell
-let private ingredientToDb (ingredient: Ingredient) recipeId =
-    { Volume = ingredient.Volume
-      Measurement = ingredient.Measurement |> measurementToString
-      Name = ingredient.Name
-      Recipe = recipeId }
-
-// Database til domenemodell
-let private ingredientDbToDomain (ingredient: IngredientDbModel) =
-    { Volume = ingredient.Volume
-      Measurement = stringToMeasurement ingredient.Measurement
-      Name = ingredient.Name }
+type DatabaseConnection (connectionString: string) =
+    let connection: NpgsqlConnection = new NpgsqlConnection(connectionString)
+    member this.getConnection () =
+        connection.Open()
+        connection
+    interface IDisposable with
+        member __.Dispose() =
+            connection.Close()
+            connection.Dispose()
 ```
 
-Disse er ganske straight forward typer og mappingsfunksjoner. Men den flittige leser la kanskje merke til attributten `[<CLIMutable>]`.
-Records i F# blir tilslutt til nedstrippede klasser når all vår kode kompileres. Klasser som opprettes fra records får ingen constructors, men det er noe Dapper trenger.
-Det attributten gjør er å lage en default constructor for den endelige nedstrippede klassen vår. Dette er noe vi ikke trenger å ha noe forholde til.
+Denne kan vi så injecte inn i `configureServices` funkjonen i `Server.fs` fila.
 
-Vi kan også lage en liten hjelpefunksjon som tar inn en oppskrift of spytter ut databasemodeller til både oppskrifter og ingredienser.
-Når vi nå skal legge til en ny oppskrift har vi kun en funksjon vi trenger å kalle.
 ```fsharp
-let private recipeToDbModels recipe =
-    let recipeToInsert = recipeToDb recipe
-
-    let ingredientsToInsert =
-        recipe.Ingredients
-        |> List.map (fun i -> ingredientToDb i recipeToInsert.Id)
-
-    recipeToInsert, ingredientsToInsert
+services.AddTransient<Database.DatabaseConnection>(fun _ ->
+    new Database.DatabaseConnection(Database.connectionString)) |> ignore
 ```
 
-## Slafs: Database time
-La oss starte med å hente ut alle oppskriftene våre. Slett hele fakbase, in-memory databasen, vi hadde fra før.
-Vi lager en ny funksjon som også heter `getAllRecipes`.
-Det vi trenger å gjøre der er å hente alle oppskriftene og alle ingrediensene og så kombinere dem til domenemodeller.
+Jeg tar inn en connectionstring som miljøvariabel og gjør litt magi på den for at den skal funke med heroku.
+Dersom du bruker ikke bruker Heroku trenger du sikkert ikke den magien, men dersom du er nysgjerrig er det bare å se på `database.fs` inne på Github.
 
+Nå som vi har injecta `DatabaseConnection` klassen vår, kan vi nå hente ut overalt hvor vi har tilgang til contexten vår.
+
+## Spørringer
+
+Nå som vi har satt opp systemet er vi klar til å kommunisere med databasen vår.
+
+La oss starte med å hente alle oppskriftene!
+Denne er litt spesiell for det vi egentlig vil er å hente ut alt fra oppskriftstabellen og joine den med ingredienstabellen.
+Men Dapper konverterer det vi får til typer, så må vi da lage en egen type for hver forskjellige join vi gjør?!
+Vi kan det om vi vil, men siden typene våre er så tett knyttet med hvordan ting er i databasen så kan vi hente ut alt og få Dapper til å lage 2 lister for oss.
+En liste som har alle oppskriftene og en liste som har alle ingrediensene.
+Så må vi bare knytte de sammen. Det er mulig det finnes en bedre måte å gjøre dette på - hvis du vet hvordan så send meg gjerne en melding!
+Men akkurat nå løser vi det slik:
 ```fsharp
-let getAllRecipes () =
+let getAllRecipes (connection: NpgsqlConnection) =
     task {
-        use connection = new NpgsqlConnection(connectionString)
-        let recipes =
-            let query =
-                "
-                SELECT * FROM
-                Recipe
-                "
-            try
-                connection.Query<RecipeDbModel>(query)
-                |> Seq.toList
-                |> Ok
-            with
-                | ex -> Error ex.Message
+        let query =
+            "
+            SELECT * FROM Recipe
+            INNER JOIN ingredient i on recipe.id = i.recipe
+            "
+            
+        let mutable recipes = []
+        let mutable ingredients = []
+        try
+            let! _ =
+                connection.QueryAsync(
+                    query,
+                    (fun (recipe: Recipe) (ingredient: Ingredient) ->
+                        recipes <- recipes@[recipe]
+                        if (ingredient :> obj <> null) then
+                            ingredients <- ingredients@[ingredient]))
+                
+            let ingredients =
+                ingredients
+                |> List.groupBy (fun i -> i.Recipe)
+                |> Map.ofList
+            let recipes =
+                recipes
+                |> List.distinct
+                |> List.map (fun r -> r, ingredients[r.Id])
+                
+            return Ok recipes
+        with
+            | ex -> return Error ex
+    }
 ```
+Vi har en enkel query vi ønsker å kjøre.
+Vi lager 2 muterbare lister og putter alt vi får i de.
+For ingrediensene sjekker vi også om den finnes før vi henter ut verdien.
+Så mapper vi de to listene sammen til en liste så vi får typen: `Seq<Recipe * Ingredient list>` - altså en liste med tupler av oppskrift og ingredienser.
+Alt dette mappes inn i en `try ... with` blokk. Dersom vi får en exception vet vi at det har skjedd en feil med spørringen eller databasen et sted.
+I denne kodesnutten så gjør vi ting som føles litt ekle i et språk som F#. Vi muterer greier, bruker `try...with`, bruker expections. Men disse greien er nyttig og har sitt bruk og her har vi alt dette i en fint funksjonelt API.
+Når vi bruker dette får vi en `Task<Result<DATA, exn>` som vi kan deale med på vanlig F# vis.
 
-I første del av funksjonen lager vi en connection til Postgres databasen vår. Så oppretter vi en query som vi prøver å hente oppskrifter fra.
-Dersom alt går fint pakker vi resultatet inn i en Ok, dersom det feiler pakker vi resultatet inn i en Error. Så kan vi deale resultatet senere.
-Her ser vi også at vi bruker keywordet `use`. `use` gjør akkurat det samme som `let` men brukes gjerne sammen med `IDisposable` for å sikre automatisk opprydding så snart den går ut av scope. NB: man må fortsatt manuelt stenge connection om man vil at den skal stenges.
-
-Vi gjør noe tilsvarende for ingrediensene, men her stenger vi connection etter vi er ferdig.
+Når vi skal legge til oppskrifter er den heldigvis litt lettere. Vi følger samme pattern, men har litt flere queries her.
 ```fsharp
-        let ingredients =
-            let query =
-                "
-                SELECT * FROM
-                Ingredient
-                "
-            try
-                connection.Query<IngredientDbModel>(query)
-                |> Seq.toList
-                |> Ok
-            with
-                | ex -> Error ex.Message
-        connection.Close()
-```
-
-På dette tidspunket må vi deale med resultatet av database-oppslagene våre.
-Enten så kan det ha gått greit for oppskriftene og ingrediensene, eller så har det skjedd en feil med en, eller begge av de.
-Det kan vi enkelt sjekke med pattern matching, så kan vi også passe på å skrive gode feilmeldinger.
-
-```fsharp
-        return
-            match recipes, ingredients with
-            | Ok recipes, Ok ingredients ->
-                let recipeDomainModels = recipeAndIngredientDbModelsToDomain recipes ingredients
-
-                printfn $"Got {List.length recipeDomainModels} recipe(s)"
-
-                Ok recipeDomainModels
-            | Error recipeError, Ok _ -> Error $"Feil under henting av oppskrifter: {recipeError}"
-            | Ok _, Error ingredientError ->  Error $"Feil under henting av ingredienser: {ingredientError}"
-            | Error recipeError, Error ingredientError ->
-                [
-                    $"Feil under henting av oppskrifter: {recipeError}."
-                    $"Feil under henting av ingredienser: {ingredientError}."
-                ]
-                |> String.concat ""
-                |> Error
-```
-
-Neste funksjon blir å legge til nye oppskrifter.
-Her tar vi inn en oppskrift og kaller `recipeToDbModels` funksjonen vår.
-Da får vi alle oppskriftene og ingrediensene våre. De inserter vi rett inn i databasen slik som vi så i eksempelet tidligere.
-Her bruker vi også en transaksjon når vi legger til, for sikkerhets skyld.
-`addRecipe` blir da:
-```fsharp
-let addRecipe newRecipe =
+let addRecipe recipe ingredients (transaction: NpgsqlTransaction) =
     task {
-        let recipeToInsert, ingredientsToInsert = recipeToDbModels newRecipe
-        let recipeQuery =
+        let insertRecipeQuery =
             "
             INSERT INTO Recipe (id, description, meal, portions, steps, title, time)
             VALUES (@id, @description, @meal, @portions, @steps, @title, @time)
             RETURNING *;
             "
         let recipeParameters = dict [
-            "id", box recipeToInsert.Id
-            "description", box recipeToInsert.Description
-            "meal", box recipeToInsert.Meal
-            "portions", box recipeToInsert.Portions
-            "steps", box recipeToInsert.Steps
-            "title", box recipeToInsert.Title
-            "time", box recipeToInsert.Time
+            "id", box recipe.Id
+            "description", box recipe.Description
+            "meal", box recipe.Meal
+            "portions", box recipe.Portions
+            "steps", box recipe.Steps
+            "title", box recipe.Title
+            "time", box recipe.Time
         ]
         
         let insertIngredientQuery =
@@ -274,39 +229,26 @@ let addRecipe newRecipe =
             SELECT * FROM Ingredient
             WHERE Recipe = @recipe;
             "
-        let ingredientRecipeIdParameters = dict [ "recipe", box recipeToInsert.Id ]
+        let ingredientRecipeIdParameters = dict [ "recipe", box recipe.Id ]
         
-        use connection = new NpgsqlConnection(connectionString)
-        connection.Open()
-        use transaction = connection.BeginTransaction()
-        let result =
-            try
-                let recipe = transaction.Connection.Query<RecipeDbModel>(recipeQuery, recipeParameters, transaction) |> Seq.toList
-                transaction.Connection.Execute(insertIngredientQuery, ingredientsToInsert, transaction) |> ignore
-                let ingredients = transaction.Connection.Query<IngredientDbModel>(getIngredientsQuery, ingredientRecipeIdParameters, transaction) |> Seq.toList
-                transaction.Commit()
-                recipeAndIngredientDbModelsToDomain recipe ingredients
-                |> List.head
-                |> Ok
-            with
-                | ex ->
-                    transaction.Rollback()
-                    Error ex.Message
-                    
-        connection.Close()
-                    
-        return result
-    
+        try
+            let! recipe = transaction.Connection.QuerySingleAsync<Recipe>(insertRecipeQuery, recipeParameters, transaction)
+            let! _ = transaction.Connection.ExecuteAsync(insertIngredientQuery, ingredients, transaction)
+            let! ingredients = transaction.Connection.QueryAsync<Ingredient>(getIngredientsQuery, ingredientRecipeIdParameters, transaction)
+            
+            return Ok (recipe, ingredients)
+        with
+            | ex -> return Error ex
 ```
 
-Når det kommer til å oppdatere oppskrifter så starter vi med å oppdatere selve oppskriften,
-Deretter sletter vi alle ingrediense og legger de til på nytt.
-Shazam! Oppdatert oppskrift.
+Her har vi 3 queries og vi bruker derfor en transaksjon.
+Første querien legger til selve oppskriften. Vi bruker `RETURNING` til å hente den nye dataen rett ut.
+Ingrediensene er en liste, den kan vi få Dapper til å iterere over, men da får vi ikke ut resultatet enkelt, så da må vi hente det ut manuelt.
 
+Oppdatering av oppskrifter følger samme mal som det å legge til, bare litt andre queries.
 ```fsharp
-let updateRecipe recipeToUpdate =
+let updateRecipe recipe ingredients (transaction: NpgsqlTransaction) =
     task {
-        let recipeToUpdate, ingredientsToUpdate = recipeToDbModels recipeToUpdate
         let recipeQuery =
             "
             UPDATE Recipe
@@ -321,60 +263,43 @@ let updateRecipe recipeToUpdate =
             "
             
         let recipeParameters = dict [
-            "id", box recipeToUpdate.Id
-            "description", box recipeToUpdate.Description
-            "meal", box recipeToUpdate.Meal
-            "portions", box recipeToUpdate.Portions
-            "steps", box recipeToUpdate.Steps
-            "title", box recipeToUpdate.Title
-            "time", box recipeToUpdate.Time
+            "id", box recipe.Id
+            "description", box recipe.Description
+            "meal", box recipe.Meal
+            "portions", box recipe.Portions
+            "steps", box recipe.Steps
+            "title", box recipe.Title
+            "time", box recipe.Time
         ]
         
-        let deleteIngredientsQuery =
+        let updateIngredientQuery =
             "
-            DELETE FROM Ingredient
-            WHERE Recipe = @recipe;
-            "
-        let insertIngredientQuery =
-            "
-            INSERT INTO Ingredient (volume, measurement, name, recipe)
-            VALUES (@volume, @measurement, @name, @recipe)
+            UPDATE Ingredient
+            SET volume = @volume,
+                measurement = @measurement,
+                name = @name,
+                recipe = @recipe
+            WHERE recipe = @recipe
             "
         let getIngredientsQuery =
             "
             SELECT * FROM Ingredient
             WHERE Recipe = @recipe;
             "
-        let ingredientRecipeIdParameters = dict [ "recipe", box recipeToUpdate.Id ]
+        let ingredientParameters = dict [ "recipe", box recipe.Id ]
             
-        use connection = new NpgsqlConnection(connectionString)
-        connection.Open()
-        use transaction = connection.BeginTransaction()
-        let result =
-            try
-                let recipe = transaction.Connection.Query<RecipeDbModel>(recipeQuery, recipeParameters, transaction) |> Seq.toList
-                transaction.Connection.Execute(deleteIngredientsQuery, ingredientRecipeIdParameters, transaction) |> ignore
-                transaction.Connection.Execute(insertIngredientQuery, ingredientsToUpdate, transaction) |> ignore
-                let ingredients = transaction.Connection.Query<IngredientDbModel>(getIngredientsQuery, ingredientRecipeIdParameters, transaction) |> Seq.toList
-                transaction.Commit()
-                recipeAndIngredientDbModelsToDomain recipe ingredients
-                |> List.head
-                |> Ok
-            with
-                | ex ->
-                    transaction.Rollback()
-                    Error ex.Message
-        
-        connection.Close()
-        
-        return result
-    }
+        try
+            let! recipe = transaction.Connection.QuerySingleAsync<Recipe>(recipeQuery, recipeParameters, transaction)
+            let! _ = transaction.Connection.ExecuteAsync(updateIngredientQuery, ingredients, transaction)
+            let! ingredients = transaction.Connection.QueryAsync<Ingredient>(getIngredientsQuery, ingredientParameters, transaction)
+            return Ok (recipe, ingredients)
+        with
+            | ex -> return Error ex
 ```
 
-Avslutningsvis trenger vi bare å slette basert oppskrifter og ingredienser basert på de IDene vi har.
-Ez pz
+Helt til slutt så skal vi kunne slette fra databasen også. Det er nok også den enkleste querien vi skal skrive.
 ```fsharp
-let deleteRecipe (id: Guid) =
+let deleteRecipe (id: Guid) (connection: NpgsqlConnection) =
     task {
         let query =
             "
@@ -388,48 +313,129 @@ let deleteRecipe (id: Guid) =
             "
             
         let parameters = dict [
-            "recipeId", box (id.ToString())
+            "recipeId", box id
         ]
         
-        use connection = new NpgsqlConnection(connectionString)
-        let result =
-            try
-                connection.Execute(query, parameters) |> ignore
-                Ok ()
-            with
-                | ex ->
-                    Error ex.Message
-                    
-        connection.Close()
-        
-        return result
+        try
+            let! numberOfRowsDeleted = connection.ExecuteAsync(query, parameters)
+            return Ok numberOfRowsDeleted
+        with
+            | ex -> return Error ex
     }
 ```
 
-## Helt til slutt
-Det vi trenger å gjøre helt til slutt er å endre litt på hvordan vi kaller disse funksjonene fra handlerene våre.
-Nå returnerer nemmelig funksjonene et resultat vi må deale med.
-For å vise hvordan dette kan gjøres så viser jeg kun `postRecipe` her. Så kan de andre være en hjemmelekse!
+## Feilhåndtering
+
+La oss førsst starte med å kvitte oss med noen match cases for å gjøre koden mer lettleselig og samtidig gjøre feilhåndteringen vår litt bedre.
+Hvis vi har et resultat fra en databasespørring som har denne typen `Task<Result<DbModel, exn>>`
+Må vi vanligvis matche på den for å hente ut riktig resultat:
 
 ```fsharp
-let postRecipe: HttpHandler =
-    fun (next: HttpFunc) (context: HttpContext) ->
-        task {
-            let! newRecipe = context.BindJsonAsync<Shared.Recipe>()
-            let! recipe = Database.addRecipe newRecipe
-            let result =
-                match recipe with
-                | Ok recipe -> json recipe
-                | Error e ->
-                    context.SetStatusCode 400
-                    json e
-            return! result next context
-        }
+task {
+    let! result = SomeDatabaseQuery()
+    match result with
+    | Ok result -> 
+        let foo = gjørNoeMedResultatet(result)
+        ...
+        ...
+    | Error e -> Feilmelding(e)
+}
 ```
 
-Her har vi en task som prøver å konvertere JSON vi får inn til oppskriftstypen vår.
-Så kaller vi databaselager, og basert på resultatet lager vi retur-verdien.
-Akkurat nå setter vi bare statuskoden til å være 400, uansett hva som skjer. Det er jo noe vi burde forbedre.
+For et lite eksempel er jo det rimelig enkelt og rett frem, men hva om vi har flere spørringer? Eller spørringer som avhenger av svar på andre spørringer?
+Da kan vi veldig fort få en slags pyramid of doom med matching.
+Det finnes biblioteker for å deale med dette, og vi skal bruke et som heter `FsToolkit.ErrorHandling` som har en hel haug med hjelefunksjoner, den vi skal se på heter `taskResult`.
+Ser vi på eksempelet over kan det brukes slik
 
-Neste gang skal vi se nærmere på hvordan vi kan sikre at det å konvertere JSON til domenetype ikke kan feile,
-og at vi være sikre på at dataen vi får inn der gir mening.
+```fsharp
+taskResult {
+    let! result = SomeDatabaseQuery() |> TaskResult.mapError Feilmelding
+    let foo = gjørNoeMedResultatet(result)
+    ...
+    ...
+}
+```
+
+Det eneste som gjenstår her er å deale med selve taskresulten, vi må på et eller annet tidspunkt matche på den. 
+For å vise det skal vi gå igjennom den nye feilhåndteringen til SLAFS backenden.
+
+I en ny fil `ErrorMessage.fs` lager jeg typer som dealer med de feilmeldingene jeg tror vi kan få
+
+```fsharp
+type Message = { Message: string }
+type HttpStatus =
+    | NotFound of string
+    | BadRequest of string
+    | InternalError of exn
+```
+
+`Message` er den typen vi serialiserer og sender ut fra endepunktet.
+`HttpStatus` er hvordan vi representerer feil i systemet vårt. Her kan man jo definere flere typer feil. `Forbidden` er jo nyttig om man har en applikasjon med autentisering.
+
+Vi trenger også noen HttpHandlers som kan lage feilene for oss. Det disse gjør er at de bl.a setter statuskoden for oss.
+```fsharp
+let notFound message = RequestErrors.NOT_FOUND message
+let badRequest message = RequestErrors.BAD_REQUEST message
+let internalError exn = ServerErrors.INTERNAL_ERROR exn
+```
+
+Så til slutt lager vi en funksjon som dealer med `TaskResult`ene våre.
+```fsharp
+let httpStatusResult result next context =
+    task {
+        match! result with
+        | Ok result -> return! json result next context
+        | Error (BadRequest e) -> return! badRequest { Message = e } next context
+        | Error (NotFound e) -> return! notFound { Message = e } next context
+        | Error (InternalError e) ->
+            printfn "%A" (e.ToString())
+            return! internalError { Message = "Det har skjedd en feil i backenden :(" } next context
+```
+Her tar vi altså resultatet, fra en `TaskResult`, matcher på den og sender det til en `HttpHandler`.
+Om man hadde skikkelig logging ville dette være en fin plass å registrere at det skjer feil, kanskje også gi en god feilmelding til brukeren.
+
+## HttpHandlers
+
+La oss bruke databasespørringene våre sammen med `TaskResult` og feilhåndteringskoden vår.
+
+For å hente oppskrifter er det lekende lett:
+```fsharp
+let getRecipes: HttpHandler =
+    fun (next: HttpFunc) (context: HttpContext) ->
+        let result =
+            taskResult {
+                let connection = getDatabaseConnection context
+                let! recipes = Database.getAllRecipes connection |> TaskResult.mapError InternalError
+                return
+                    recipes
+                    |> Seq.map Types.encodeRecipeAndIngredient
+            }
+        httpStatusResult result next context
+```
+
+Post blir litt mer komplisert, men mest fordi vi trenger å rulle tilbake transaction dersom noe feiler.
+
+```
+let postRecipe: HttpHandler =
+    fun (next: HttpFunc) (context: HttpContext) ->
+        let result =
+            taskResult {
+                let! recipe, ingredients = decodeRecipeAndIngredientHelper context
+                let connection = getDatabaseConnection context
+                use transaction = connection.BeginTransaction()
+                let! newRecipe =
+                    Database.addRecipe recipe ingredients transaction
+                    |> TaskResult.mapError (fun ex ->
+                        transaction.Rollback()
+                        InternalError ex)
+                transaction.Commit()
+                return
+                    newRecipe
+                    |> Types.encodeRecipeAndIngredient
+            }
+        httpStatusResult result next context
+```
+
+Funksjonene for `put` og `delete` følger samme mønster, implementasjonen av dem kan du ordne selv. Alternativt kan du se koden på github.
+
+Det var alt vi hadde for denne gang!
